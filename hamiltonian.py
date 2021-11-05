@@ -22,8 +22,26 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
     POTENTIAL = 0.0   
     
     FOR EACH ATOM I IN THE SYSTEM:
-        FOR EACH ATOM IN THE SYSTEM AFTER ATOM I:
+        FOR each atom in the system after atom I:
             CHARGE = ATOM1 CHARGE * ATOM2 CHARGE
             POTENTIAL = CHARGE/(DISTANCE BETWEEN ATOMS)
             
+            
+    def smooth_norm(x):
+        
+        IF the potential_epsilon is 0:
+            RETURN x
+        ELSE:
+            RETURN the square root of the sum of x squared plus potential_epsilon squared.
     
+    
+    def nuclear_potential(xs):
+        
+        CREATE an empty list for potential
+        
+        FOR atom in atoms:
+            ADD (-charge/ smooth_norm(coord - x) for x in sx) to the potential list 
+        RETURN the sum of the potential lists for all the atom in atoms
+    
+    
+        
