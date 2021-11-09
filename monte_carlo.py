@@ -22,6 +22,7 @@ from numpy.random import default_rng
 # local imports
 import log_conf
 from log_conf import log, log_small_horizontal_line, log_large_horizontal_line
+from flags import flags
 
 
 # initialize the random number generator
@@ -262,7 +263,7 @@ def save_human_readable_x_values(state_array, nof_states, rows=1):
     return
 
 
-def test_template(max_steps=5):
+def test_template():
     """ Use for basic debugging of execution flow and tensor shapes. """
 
     log_conf.setLevelDebug()
@@ -279,7 +280,7 @@ def test_template(max_steps=5):
     log.debug(f"Preparing to preform {max_steps} monte carlo steps")
 
     # preform a few steps to produce log output
-    for i in range(0, max_steps):
+    for i in range(0, flags.mcmc_steps_per_update):
         log_large_horizontal_line(i)
         preform_one_step(list_of_states, list_of_ratios, list_of_accepts, dim_of_samples, *args)
     # EOL
