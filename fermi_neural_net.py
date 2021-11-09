@@ -171,25 +171,35 @@ def compute_determinants(walker_confs, h2_final, *args):
 def evaluate_algorithm(walker_confs, nuclear_positions, nof_layers, *args):
     """ just a rough outline """
 
-    h1, h2 = prepare_initial_h_tensors(walker_confs, nuclear_positions)
-    single_stream_h = [h1, ]
-    double_stream_h = [h2, ]
+    epoch = 50
 
-    # process the layers
-    for l in range(nof_layers):
+    for e in range(0, epoch):
 
-        h1, h2 = _rough_idea_of_computing_values_for_a_layer(h1, h2, *args)
-        single_stream_h.append(h1)
-        double_stream_h.append(h2)
+        h1, h2 = prepare_initial_h_tensors(walker_confs, nuclear_positions)
+        single_stream_h = [h1, ]
+        double_stream_h = [h2, ]
 
-    # so at this point the only thing we pass on is the last double stream h
-    # this is h^{L,alpha}_{j}
-    h2_final = double_stream_h[-1]
+        # process the layers
+        for l in range(nof_layers):
 
-    det_up, det_down = compute_determinants(walker_confs, h2_final, *args[1:])
+            h1, h2 = _rough_idea_of_computing_values_for_a_layer(h1, h2, *args)
+            single_stream_h.append(h1)
+            double_stream_h.append(h2)
 
-    # assume that each of these arrays are only 1 dimensional
-    det_weights = args[0]
-    wavefunction = np.sum(det_weights * det_up * det_down)
+        # so at this point the only thing we pass on is the last double stream h
+        # this is h^{L,alpha}_{j}
+        h2_final = double_stream_h[-1]
 
-    return wavefunction
+        det_up, det_down = compute_determinants(walker_confs, h2_final, *args[1:])
+
+        # assume that each of these arrays are only 1 dimensional
+        det_weights = args[0]
+        wavefunction = np.sum(det_weights * det_up * det_down)
+
+        # calculate gradients per normal
+
+        # then massage/manipulate gradients with KFAC
+
+        # backpropagate
+
+    return
