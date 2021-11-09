@@ -67,3 +67,24 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
     RETURN the kinetic_from_log, potential
     
 
+<<<<<<< Updated upstream
+=======
+
+def exact_hamiltonian(atoms, nelectrons, potential_epsilon = 0.0):
+    
+    CALL on the operator function and returns the kinetic_from_log and potential_epsilon
+    
+    def _hamiltonian(f,x):
+        
+        GET the log of psi and the sign of psi 
+        
+        PSI is the exponent of psi times the sign of psi
+        THE Hamiltonian is the kinetic_from_log plus the potential all multiplied by psi
+        
+        RETURN psi and the hamamiltonian
+        
+    RETURN _hamiltonian
+
+def
+    
+>>>>>>> Stashed changes
