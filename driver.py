@@ -15,18 +15,19 @@ from datetime import datetime as dt
 
 # third party imports
 import numpy as np
-from numpy.random import default_rng
-import tensorflow as tf
+# from numpy.random import default_rng
+# import tensorflow as tf
 
 
 # local imports
 import flags
-import log_conf
-import kfac
-import neural_net as NN
+from log_conf import log
+# import kfac
+# import hamiltonian as h_module
+import fnn
+from train import Train
 import monte_carlo as MC
 import quantum_mechanics as QM
-from log_conf import log, log_small_horizontal_line, log_large_horizontal_line
 
 
 def prepare_file_paths():
@@ -80,7 +81,7 @@ def prepare_system(result_path):
 def prepare_nework(*args):
     """ x """
     kwargs = {}
-    network_configuration = NN.NetworkConfiguration(*args, **kwargs)
+    network_configuration = fnn.NetworkConfiguration(*args, **kwargs)
 
     return network_configuration
 
@@ -88,7 +89,7 @@ def prepare_nework(*args):
 def prepare_optimizer(*args):
     """ x """
     kwargs = {}
-    optimizaiton_configuration = NN.OptimizerConfiguration(*args, **kwargs)
+    optimizaiton_configuration = fnn.OptimizerConfiguration(*args, **kwargs)
 
     return optimizaiton_configuration
 
@@ -128,7 +129,36 @@ def main():
     # some other keyword arguments?
     kwargs = {}
 
-    NN.train(
+    """ create the Network object
+    Currently the Train class assumes there is a network object and it needs to provide the following functions:
+        - `network.parameters()`, which returns relevant network parameters for
+        - `network.zero_grad()`
+        - `network.forward(walkers)`, which assumes it takes a `walkers` object that is the return value from a `mcmc.create()` call
+    """
+    L, n_up = 5, 1
+    e_pos = np.array([[1, 1, 1],  [-1, 1, 1]])
+    n_pos = np.array([[0, 2, 1],  [0, 0, 1]])
+    network = fnn.FermiNet(L, n_up, e_pos, n_pos, custom_h_sizes=False, num_determinants=2)
+    # wavefn = model.forward()
+    # print(wavefn)
+
+    """ create the mcmc object
+    Currently the Train class assumes there is a mcmc object and it needs to provide the following functions:
+        - `mcmc.create()`, which returns the configurations for each electron (`walkers`)
+    """
+    mcmc = None
+
+    """ create the Hamiltonian object
+    Currently the Train class assumes there is a Hamiltonian object and it needs to provide the following functions:
+        - `H.kinetic(phi, walkers)`, which returns the kinetic value as a torch tensor?
+        - `H.potential(walkers)`, which returns the potential value as a torch tensor?
+    """
+    hamiltonian = None
+
+    # create the Train object
+    trainer_obj = Train(network, mcmc, hamiltonian, args)
+
+    trainer_obj.train(
         network_configuration,
         optimizaiton_configuration,
         kfac_configuration,
