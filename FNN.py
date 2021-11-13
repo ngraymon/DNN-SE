@@ -21,24 +21,24 @@ class FermiNet(torch.nn.Module):
         self.eN_vectors = torch.from_numpy(eN_vectors)
         self.inputs[0] = torch.from_numpy(np.array([
             np.concatenate([
-                np.concatenate([eN_vectors[i][j] for j in range(I)], axis=None), 
+                np.concatenate([eN_vectors[i][j] for j in range(I)], axis=None),
                 [np.linalg.norm(eN_vectors[i][j]) for j in range(I)]
             ]) for i in range(n)]))
         #double stream inputs:
         ee_vectors = [[i-j for j in electron_positions] for i in electron_positions]
         self.inputs[1] = torch.from_numpy(np.array([[
             np.concatenate([
-                ee_vectors[i][j], 
+                ee_vectors[i][j],
                 [np.linalg.norm(ee_vectors[i][j])]
             ]) for j in range(n)] for i in range(n)]))
-        
+
         #Randomly initialise trainable parameters:
         self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, custom_h_sizes[-1][0]))#w vectors
         self.final_biases = torch.nn.Parameter(torch.rand(self.num_determinants, n))#g scalars
         self.pi_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))#pi scalars for decaying envelopes
         self.sigma_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))#sigma scalars for decaying envelopes
         self.omega_weights = torch.nn.Parameter(torch.rand(self.num_determinants))#omega scalars for summing determinants
-    
+
     def forward(self):
         layer_outputs = [self.inputs]
         for i in self.layers[:-1]:
@@ -61,7 +61,7 @@ class FermiNet(torch.nn.Module):
                     final_dot = torch.dot(self.final_weights[k][i], layer_outputs[-1][0][j]) + self.final_biases[k][i]
                     env_sum = torch.sum(torch.stack([self.pi_weights[k][i][m]*torch.exp(-torch.norm(self.sigma_weights[k][i][m] * self.eN_vectors[j][m])) for m in range(self.I)]))
                     phi_down[k][i-self.n_up][j-self.n_up] = final_dot * env_sum
-        
+
         #Compute determinants:
         d_up = torch.det(phi_up)
         d_down = torch.det(phi_down)
@@ -83,7 +83,7 @@ class FermiLayer(torch.nn.Module):
         ##matrix and bias vector for each double stream's linear op
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))#matrix of matrices
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))#matrix of vectors
-    
+
     def forward(self, input, n_up):
         #single layers:
         single_h, double_h = input[0].type(torch.FloatTensor), input[1].type(torch.FloatTensor)
@@ -100,14 +100,14 @@ class FermiLayer(torch.nn.Module):
         n = len(input[0])
         f_vectors = torch.stack([
             torch.cat((
-                single_h[i], 
-                single_g_up, 
-                single_g_down, 
-                double_g_ups[i], 
+                single_h[i],
+                single_g_up,
+                single_g_down,
+                double_g_ups[i],
                 double_g_downs[i]
             )) for i in range(n)]).type(torch.FloatTensor)
         # print(f_vectors.size())
-        
+
         print(torch.transpose(self.v_matrices, 1, 2).size(), f_vectors[:,:,None].size())
         print(self.v_matrices.type(), f_vectors.type())
         # single_output = torch.tanh(torch.bmm(torch.transpose(self.v_matrices, 1, 2), f_vectors[:,:,None]) + self.b_vectors)#Note: check dimensions order for torch.mul are correct??

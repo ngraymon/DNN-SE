@@ -10,7 +10,7 @@ class Train():
         """
         network: a call to the ferminet network class
 
-        mcmc:an instance of the mcmc class allowing to creat an object that samples configuariosn from 
+        mcmc:an instance of the mcmc class allowing to creat an object that samples configuariosn from
         psi^2
 
         Hamiltonian: a call to the class hamiltonian to calculate the local energy
@@ -27,13 +27,13 @@ class Train():
     def train_KFAC(self):
         return 0
 
-  
 
-    
+
+
     def train(self, bool_KFAC=False):
         if bool_KFAC:
             self.train_KFAC()
-        
+
         losstot=[]
         phi_phisgn=[[]]
         for i in range(self.param['epoch']):
@@ -51,7 +51,7 @@ class Train():
 
             # this is the "real" loss of the system
             loss=torch.mean(local_energy)
-        
+
             #here is the loss being passed into the backward pass since we have an explicit
             #expression for the gradient of the loss
             computedloss=torch.mean((local_energy-loss)*phi)
@@ -63,6 +63,6 @@ class Train():
             #phi_phisgn.append()
         return losstot
 
-        
+
 
 
