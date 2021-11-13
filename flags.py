@@ -39,6 +39,11 @@ flags.double_precision = False
 flags.deterministic = False
 flags.result_folder = abspath(join(dirname(__file__), 'results'))
 
+# the name of the file where we save command line arguments
+flags.cmdline_file = 'command_line_arguments.txt'
+
+# shouldn't this be an input value? ... unclear
+flags.system_type = 'molecule'
 
 
 flags.mcmc_burn_in = 100

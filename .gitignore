@@ -1,5 +1,5 @@
 # project specific
-
+results/results_*
 states_*.txt
 
 # Byte-compiled / optimized / DLL files

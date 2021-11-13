@@ -22,7 +22,7 @@ import numpy as np
 # local imports
 from flags import flags
 from log_conf import log
-# import kfac
+import kfac
 # import hamiltonian as h_module
 import fnn
 from train import Train
@@ -47,7 +47,7 @@ def prepare_file_paths():
 
     result_path = join(flags.result_folder, f'results_{time}')
 
-    os.makdir(result_path)
+    os.mkdir(result_path)
 
     return result_path
 
@@ -79,33 +79,57 @@ def prepare_system(result_path):
 
 
 def prepare_nework(*args):
-    """ x """
+    """ Need to discuss as group how we are implementing the
+    'configs/preparation'
+    """
     kwargs = {}
-    network_configuration = fnn.NetworkConfiguration(*args, **kwargs)
+    try:
+        network_configuration = fnn.NetworkConfiguration(*args, **kwargs)
+    except AttributeError as e:
+        print('Network configuration not implemented')
+        network_configuration = None
 
     return network_configuration
 
 
 def prepare_optimizer(*args):
-    """ x """
+    """ Need to discuss as group how we are implementing the
+    'configs/preparation'
+    """
     kwargs = {}
-    optimizaiton_configuration = fnn.OptimizerConfiguration(*args, **kwargs)
+    try:
+        optimization_configuration = fnn.OptimizerConfiguration(*args, **kwargs)
+    except AttributeError as e:
+        print('Optimization configuration not implemented')
+        optimization_configuration = None
 
-    return optimizaiton_configuration
+    return optimization_configuration
 
 
 def prepare_kfac(*args):
-    """ x """
+    """ Need to discuss as group how we are implementing the
+    'configs/preparation'
+    """
     kwargs = {}
-    kfac_configuration = kfac.KfacConfiguration(*args, **kwargs)
+    try:
+        kfac_configuration = kfac.KfacConfiguration(*args, **kwargs)
+    except AttributeError as e:
+        print('KFAC configuration not implemented')
+        kfac_configuration = None
 
     return kfac_configuration
 
 
 def prepare_mcmc(*args):
-    """ x """
+    """ Need to discuss as group how we are implementing the
+    'configs/preparation'
+    """
     kwargs = {}
-    mcmc_configuration = kfac.McmcConfiguration(*args, **kwargs)
+    try:
+        mcmc_configuration = kfac.McmcConfiguration(*args, **kwargs)
+    except AttributeError as e:
+        print('MCMC configuration not implemented')
+        mcmc_configuration = None
 
     return mcmc_configuration
 
@@ -119,7 +143,7 @@ def main():
         log.info('Running in deterministic mode. Performance will be reduced.')
 
     result_path = prepare_file_paths()
-    args = prepare_system()
+    args = prepare_system(result_path)
     network_configuration = prepare_nework(args)
     # pretraining_configuration = prepare_pretraining(args)
     optimizaiton_configuration = prepare_optimizer(args)
@@ -156,13 +180,14 @@ def main():
     hamiltonian = None
 
     # create the Train object
-    trainer_obj = Train(network, mcmc, hamiltonian, args)
+    param = {'lr': 0.01, 'epoch': 10}
+    trainer_obj = Train(network, mcmc, hamiltonian, param)
 
     trainer_obj.train(
-        network_configuration,
-        optimizaiton_configuration,
-        kfac_configuration,
-        mcmc_configuration,
+        # network_configuration,
+        # optimizaiton_configuration,
+        # kfac_configuration,
+        # mcmc_configuration,
         **kwargs
     )
 
