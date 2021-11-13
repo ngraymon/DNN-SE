@@ -11,6 +11,7 @@ https://abseil.io/
 """
 
 # system imports
+from os.path import abspath, dirname, join
 from types import SimpleNamespace
 
 # third party imports
@@ -33,6 +34,10 @@ flags.batch_size = 10
 flags.double_precision = False
 # flags.pretrain_iterations = 1000
 # flags.pretrain_basis = 'sto-3g'
+
+
+flags.deterministic = False
+flags.result_folder = abspath(join(dirname(__file__), 'results'))
 
 
 

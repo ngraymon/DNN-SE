@@ -20,7 +20,7 @@ import numpy as np
 
 
 # local imports
-import flags
+from flags import flags
 from log_conf import log
 # import kfac
 # import hamiltonian as h_module
