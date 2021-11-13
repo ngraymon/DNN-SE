@@ -112,11 +112,11 @@ class FermiLayer(torch.nn.Module):
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))  # matrix of matrices
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))  # matrix of vectors
 
-    def forward(self, input, n_up):
+    def forward(self, input_tensor, n_up):
         """ x """
 
         # single layers:
-        single_h, double_h = input[0].type(torch.FloatTensor), input[1].type(torch.FloatTensor)
+        single_h, double_h = input_tensor[0].type(torch.FloatTensor), input_tensor[1].type(torch.FloatTensor)
         single_h_up = single_h[:n_up]
         single_h_down = single_h[n_up:]
         double_h_ups = double_h[:, :n_up]
@@ -127,7 +127,7 @@ class FermiLayer(torch.nn.Module):
         double_g_ups = torch.mean(double_h_ups, 1)  # Note: double check which axis?
         double_g_downs = torch.mean(double_h_downs, 1)  # Note: double check which axis?
 
-        n = len(input[0])
+        n = len(input_tensor[0])
         f_vectors = torch.stack([
             torch.cat((
                 single_h[i],
