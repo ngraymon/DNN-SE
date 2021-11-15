@@ -162,10 +162,7 @@ class FermiLayer(torch.nn.Module):
                 double_g_ups[i],
                 double_g_downs[i]
             )) for i in range(n)]).type(torch.FloatTensor)
-        # print(f_vectors.size())
 
-        print(torch.transpose(self.v_matrices, 1, 2).size(), f_vectors[:, :, None].size())
-        print(self.v_matrices.type(), f_vectors.type())
         # single_output = torch.tanh(torch.bmm(torch.transpose(self.v_matrices, 1, 2), f_vectors[:,:,None]) + self.b_vectors)  # Note: check dimensions order for torch.mul are correct??
 
         single_output = torch.tanh(
@@ -179,16 +176,12 @@ class FermiLayer(torch.nn.Module):
             ) + self.b_vectors
         )
 
-        print(single_output.size())
         # output[0] = np.tanh(torch.tensor([(self.v_matrices[i] @ f_vectors[i]) + self.b_vectors[i] for i in range(len(f_vectors))]))
         if single_output.size() == single_h.size():
             single_output += single_h
 
         # double layers:
         # double_output = torch.tanh(torch.mul(self.w_matrices, double_h) + self.c_vectors)#Note: check dimensions order for @ (np.matmul) are correct??
-        print(torch.flatten(self.w_matrices, end_dim=1).size(), torch.flatten(double_h[:, :, :, None], end_dim=1).size())
-        print(self.c_vectors.size())
-
         # Note: check dimensions order for torch.mul are correct??
         double_output = torch.tanh(
             torch.squeeze(
@@ -203,7 +196,6 @@ class FermiLayer(torch.nn.Module):
         # reshape:
         shape = list(double_output.shape)[1:]
         double_output = double_output.reshape([n, n]+shape)
-        print("a", double_output.size())
         # output[1] = np.tanh(torch.tensor([[(self.w_matrices[i][j] @ double_h[i][j]) + self.c_vectors[i][j] for j in range(len(double_h[0]))] for i in range(len(double_h))]))
         if double_output.size() == double_h.size():
             double_output += double_h
