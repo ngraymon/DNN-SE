@@ -26,7 +26,7 @@ import kfac
 # import hamiltonian as h_module
 import fnn
 from train import Train
-import monte_carlo as MC
+from monte_carlo import MonteCarlo
 import quantum_mechanics as QM
 
 
@@ -142,6 +142,10 @@ def main():
         # set random seed to flags.deterministic_seed
         log.info('Running in deterministic mode. Performance will be reduced.')
 
+    """ !NOTE! - so far these don't really do anything
+    they are more necessary in the event when we need to do multi-gpu stuff
+    and/or if we are having more configurational parameters
+    """
     result_path = prepare_file_paths()
     args = prepare_system(result_path)
     network_configuration = prepare_nework(args)
@@ -170,7 +174,16 @@ def main():
     Currently the Train class assumes there is a mcmc object and it needs to provide the following functions:
         - `mcmc.create()`, which returns the configurations for each electron (`walkers`)
     """
-    mcmc = None
+    mcmc = MonteCarlo(
+        network=network,
+        batch_size=flags.batch_size,
+        initial_offset=flags.mcmc_initial_offset,
+        initial_stddev=flags.mcmc_initial_stddev,
+        offset=flags.mcmc_offset,
+        stddev=flags.mcmc_stddev,
+        nof_steps=flags.mcmc_steps_per_update,
+        dtype=np.float32,
+    )
 
     """ create the Hamiltonian object
     Currently the Train class assumes there is a Hamiltonian object and it needs to provide the following functions:
@@ -190,6 +203,8 @@ def main():
         # mcmc_configuration,
         **kwargs
     )
+
+    print("Success!")
 
 
 if __name__ == '__main__':
