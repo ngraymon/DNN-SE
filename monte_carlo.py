@@ -93,7 +93,7 @@ class MonteCarlo():
         self._stddev = stddev
 
         # initialize our walkers
-        self.walker_shape = (1, batch_size)  # this probably needs to be (3*N, 1, batch_size)
+        self.walker_shape = (3*N, batch_size)  # this probably needs to be (3*N, 1, batch_size)
         # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
         self.walkers = self._initial_random_states()
 
@@ -220,10 +220,11 @@ class MonteCarlo():
 
         return acceptance_ratio
 
-    def propose_new_state(self, dim_of_samples, *args):
+    def propose_new_state(self):
         """ Generate a possibly new state.
 
-        Return `dim_of_samples` from the distribution `pdf`
+        Return `walker_shape` samples from the normal distribution
+        specified by `_offset` and `_stddev`.
 
         see https://numpy.org/doc/stable/reference/random/generator.html
         for more distribution options:
@@ -234,10 +235,6 @@ class MonteCarlo():
         would have to turn to scipy; something like `scipy.stats.truncnorm` from
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.truncnorm.html
         """
-
-        # mu, sigma = args
-
-        # for now we assume normal
         delta = rng.normal(
             loc=self._offset,
             scale=self._stddev,
@@ -249,7 +246,11 @@ class MonteCarlo():
         return new_state
 
     def _initial_random_states(self):
-        """ Compute initial walker points """
+        """ Compute initial walker points.
+
+        Return `self.walker_shape` samples from the normal distribution
+        specified by the `_init_offset` and `_init_stddev`
+        R"""
 
         state = rng.normal(
             loc=self._init_offset,
@@ -258,7 +259,7 @@ class MonteCarlo():
         )
         return state
 
-    def metropolis_accept_step(self, acceptance_ratio, walkers):
+    def metropolis_accept_step(self, acceptance_ratio):
         """ This function evaluates the 'proposed' new_state
         and returns `True` if it is accepted otherwise 'False'
         """
@@ -268,7 +269,7 @@ class MonteCarlo():
         log.debug(f"{'uniform random number':<30}{u[0]:.8f}")
 
         # i have to call forward to generate my new phis
-        new_phi = self.net.forward(walkers)[0]
+        new_phi = self.net.forward(self.walkers)[0]
 
         # test the condition
         accepted = bool(u <= acceptance_ratio)
@@ -276,48 +277,62 @@ class MonteCarlo():
 
         return accepted, new_phi
 
-    def preform_one_step(
-        self,
-        list_of_states,
-        list_of_psi,
-        list_of_ratios,
-        list_of_accepts,
-        dim_of_samples, *args, **kwargs
-    ):
+    def preform_one_step(self, *args, **kwargs):
         """ Using a standard Metropolis-Hastings algorithm
         see https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm
         """
 
+        if kwargs.get("record_steps", False):
+            list_of_states, list_of_psi, list_of_ratios, list_of_accepts = args
+
         # 1 - some input parameters that the step depends on
-        cur_state = list_of_states[-1]
-        cur_psi = list_of_psi[-1]
+        cur_state = self.state.copy()
+        cur_psi = self.psi.copy()
         accuracy = self.rolling_accuracy
 
         # 2 - draw a new step and wavefunction
-        new_state = self.propose_new_state(dim_of_samples, *args)
+        new_state = self.propose_new_state()
         new_psi = self.net.forward(new_state)
 
         # 3 - compute acceptance ratio
         acceptance_ratio = np.squeeze(2 * (new_psi - cur_psi))
         # acceptance_ratio = compute_acceptance_ratio(cur_state, new_state, dim_of_samples, *args)
-        list_of_ratios.append(acceptance_ratio[0])
 
-        # 4 - calculate if we accept or reject this step
-        accepted_bools, new_phi = self.metropolis_accept_step(acceptance_ratio, )
-        list_of_accepts.append(accepted_bools)
+        if record_steps:
+            list_of_ratios.append(acceptance_ratio[0])
+
+        # 4 - calculate if we accept or reject for each step
+        accepted_bools, new_phi = self.metropolis_accept_step(acceptance_ratio)
+
+        if record_steps:
+            list_of_accepts.append(accepted_bools)
 
         # need to change this to broadcasted acceptance because accepted will be N-d array
+
+        """ 5 - pick up states/psi's given decision array `accepted_bools`
+        For each element in `accepted_bools` if it is:
+          - `True` we set the element of `cur_state` to the corresponding element of `new_state`
+          - `False` we set the element of `cur_state` to the corresponding element of `cur_state`
+
+        The same process is followed for `cur_psi` and `new_psi`.
+        """
         cur_state = np.where(accepted_bools, new_state, cur_state)
         cur_psi = np.where(accepted_bools, new_psi, cur_psi)
 
-        # 3 - update relevant objects/parameters
-        list_of_states.append(cur_state)
-        list_of_psi.append(cur_psi)
+        # if we are storing our progress for analysis
+        if record_steps:
+            list_of_states.append(cur_state)
+            list_of_psi.append(cur_psi)
+
+        # 6 - update relevant objects/parameters
+        self.state = cur_state
+        self.psi = cur_psi
         self.rolling_accuracy = accuracy = np.mean(accepted_bools.astype(f32))
 
         return cur_state, cur_psi, accuracy
 
     def print_sorted_ratios(list_of_ratios):
+        """ Debug/Profiling tool to investigate the distribution of the acceptace ratios. """
         values = {}
         for n in list_of_ratios:
             if n in values:
@@ -327,8 +342,6 @@ class MonteCarlo():
 
         for k, v in values.items():
             print(f"The ratio {k: >30} occurred {v: >6} times")
-
-        return
 
     def save_human_readable_x_values(state_array, nof_states, rows=1):
         """ Readable text for debugging """
@@ -374,11 +387,12 @@ def test_template(fnn):
         offset=flags.mcmc_offset,
         stddev=flags.mcmc_stddev,
         nof_steps=flags.mcmc_steps_per_update,
+        record_steps=True,
         dtype=f32,
     )
 
     # instantiate objects for storage
-    original_state = mcmc.propose_new_state(dim_of_samples, *args)
+    original_state = mcmc.propose_new_state()
     list_of_states = [original_state, ]
     list_of_ratios, list_of_accepts = [], []
 
@@ -387,7 +401,13 @@ def test_template(fnn):
     # preform a few steps to produce log output
     for i in range(0, flags.mcmc_steps_per_update):
         log_large_horizontal_line(i)
-        mcmc.preform_one_step(list_of_states, list_of_ratios, list_of_accepts, dim_of_samples, *args)
+        mcmc.preform_one_step(
+            list_of_states,
+            list_of_ratios,
+            list_of_accepts,
+            record_steps=True
+        )
+
     # EOL
 
     state_array = np.array(list_of_states)
