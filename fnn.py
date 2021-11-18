@@ -36,6 +36,17 @@ class FermiNet(torch.nn.Module):
 
         self.layers = [FermiLayer(n, custom_h_sizes[i], custom_h_sizes[i+1]) for i in range(L)]
 
+        self.preprocess(electron_positions, nuclei_positions)
+
+        # Randomly initialise trainable parameters:
+        self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, custom_h_sizes[-1][0]))# w vectors
+        self.final_biases = torch.nn.Parameter(torch.rand(self.num_determinants, n))  # g scalars
+        self.pi_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I)) # pi scalars for decaying envelopes
+        self.sigma_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))  # sigma scalars for decaying envelopes
+        self.omega_weights = torch.nn.Parameter(torch.rand(self.num_determinants))  # omega scalars for summing determinants
+
+
+    def preprocess(self, electron_positions, nuclei_positions):
         # inputs in format [single_h_vecs_vector, double_h_vecs_matrix]
         self.inputs = [None, None]  # to be processed
 
@@ -46,12 +57,12 @@ class FermiNet(torch.nn.Module):
         self.inputs[0] = torch.from_numpy(np.array([
             np.concatenate([
                 np.concatenate(
-                    [eN_vectors[i][j] for j in range(I)],
+                    [eN_vectors[i][j] for j in range(self.I)],
                     axis=None
                 ),
-                [np.linalg.norm(eN_vectors[i][j]) for j in range(I)]
+                [np.linalg.norm(eN_vectors[i][j]) for j in range(self.I)]
             ])
-            for i in range(n)
+            for i in range(self.n)
         ]))
 
         # double stream inputs:
@@ -63,26 +74,23 @@ class FermiNet(torch.nn.Module):
                     ee_vectors[i][j],
                     [np.linalg.norm(ee_vectors[i][j])]
                 ])
-                for j in range(n)
+                for j in range(self.n)
             ]
-            for i in range(n)
+            for i in range(self.n)
         ]))
 
-        # Randomly initialise trainable parameters:
-        self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, custom_h_sizes[-1][0]))# w vectors
-        self.final_biases = torch.nn.Parameter(torch.rand(self.num_determinants, n))  # g scalars
-        self.pi_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I)) # pi scalars for decaying envelopes
-        self.sigma_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))  # sigma scalars for decaying envelopes
-        self.omega_weights = torch.nn.Parameter(torch.rand(self.num_determinants))  # omega scalars for summing determinants
 
-    def forward(self):
+    def forward(self, electron_positions=None, nuclei_positions=None):
         """ x """
+
+        if (electron_positions != None) and (nuclei_positions != None):
+            self.preprocess(electron_positions, nuclei_positions)
 
         layer_outputs = [self.inputs]
         for i in self.layers[:-1]:
             layer_outputs.append(i.forward(layer_outputs[-1], self.n_up))
 
-        layer_outputs.append(i.forward(layer_outputs[-1], self.n_up))
+        layer_outputs.append(self.layers[-1].forward(layer_outputs[-1], self.n_up))
 
         # Compute final matrices:
         phi_up = torch.empty(self.num_determinants, self.n_up, self.n_up)
@@ -138,6 +146,7 @@ class FermiLayer(torch.nn.Module):
         """
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))
+
 
     def forward(self, input_tensor, n_up):
         """ x """
