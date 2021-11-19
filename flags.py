@@ -48,7 +48,6 @@ flags.system_type = 'molecule'
 
 flags.mcmc_burn_in = 100
 flags.mcmc_steps_per_update = 10
-flags.mcmc_initial_offset = 0.0
 flags.mcmc_initial_stddev = 0.8
 flags.mcmc_offset = 0.0
 flags.mcmc_stddev = 0.02
