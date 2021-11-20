@@ -16,6 +16,7 @@ from os.path import abspath, join, dirname
 
 # third party imports
 import numpy as np
+from numpy import newaxis as NEW
 from numpy.random import default_rng
 from numpy import float32 as f32
 
@@ -75,8 +76,8 @@ class MonteCarlo():
 
         Args:
             batch_size: number of configurations to genereate
-            initial_offset: mean of normal distribution
-                from which initial configurations are drawn
+            initial_offset: list of means of normal distribution from which initial
+                configurations are drawn, of length 3*N where N is the number of electrons.
             initial_stddev: standard deviation of normal distribution
                 from which initial configurations are drawn
             offset: mean of normal distribution for drawing mc moves
@@ -93,7 +94,11 @@ class MonteCarlo():
         self._stddev = stddev
 
         # initialize our walkers
-        self.walker_shape = (3*N, batch_size)  # this probably needs to be (3*N, 1, batch_size)
+        # nof_electrons = len(initial_offset) // 3
+
+        # the empty dimension `1` at the end is necessary for correct concatenation
+        # when sampling
+        self.walker_shape = (len(initial_offset), batch_size, 1)
         # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
         self.walkers = self._initial_random_states()
 
@@ -117,109 +122,6 @@ class MonteCarlo():
         """
         return
 
-    def compute_probability_density_of_state(self, state, *args):
-        """ Compute the probability density of g()
-
-        this will depend on how we define:
-        - our Hamiltonian
-        - a state
-        - wavefunction forms
-        etc
-
-        """
-        dim_of_samples = args[0]
-
-        # extract the wavefunction/probability density function (constructed by the network)
-        # this is our P() function
-        # pdf = args
-
-        result = rng.random(
-            loc=self._offset,
-            scale=self._stddev,
-            size=dim_of_samples
-        )
-
-        return result
-
-    def compute_probability_ratio(self, cur_state, new_state, *args):
-        """Compute the probability ratio between
-        the proposed sample x` and the previous sample x_t.
-        """
-
-        g_of_new_state = self.compute_probability_density_of_state(new_state, *args)
-        log.debug(f"{'P(x`)':<30}{g_of_new_state[0]:.8f}")
-
-        g_of_current_state = self.compute_probability_density_of_state(cur_state, *args)
-        log.debug(f"{'P(x_t)':<30}{g_of_current_state[0]:.8f}")
-
-        try:
-            probability_ratio = g_of_new_state / g_of_current_state
-            log.debug(f"{'probability_ratio':<30}{probability_ratio[0]:.8f}")
-        except Exception as e:
-            print("numerical issue")
-            raise e
-
-        return probability_ratio
-
-    def compute_proposal_density(self, state, *args, proposal_density='gaussian'):
-        """ For now we just use a gaussian as the proposal density.
-        This should probably get changed in the future?
-        """
-
-        # assuming this is the appropriate treatment a.t.m
-        # also assume that we have multidimensional arrays?
-        x = state
-        mu, sigma = args  # a.k.a [loc, scale]
-
-        prefactor = np.prod(np.sqrt(1.0 / (2 * np.pi * sigma**2)))
-
-        exponential = -0.5 * (np.power(x - mu, 2.0) / (2 * sigma**2))
-
-        g_of_x = prefactor * np.exp(exponential)
-
-        return g_of_x
-
-    def compute_proposal_density_ratio(cur_state, new_state, *args):
-        """Compute ratio of the proposal density in two directions.
-        From x_t to x` and conversely from x` to x_t.
-        This is equal to 1 if the proposal density is symmetric.
-        """
-        dim_of_samples, mu, sigma = args
-
-        rho_of_new_state = compute_proposal_density(cur_state, mu, sigma)
-        log.debug(f"{'g(x_t | x`)':<30}{rho_of_new_state[0]:.8f}")
-
-        rho_of_current_state = compute_proposal_density(new_state, mu, sigma)
-        log.debug(f"{'g(x` | x_t)':<30}{rho_of_current_state[0]:.8f}")
-
-        proposal_density_ratio = rho_of_current_state / rho_of_new_state
-        log.debug(f"{'proposal_density_ratio':<30}{proposal_density_ratio[0]:.8f}")
-
-        return proposal_density_ratio
-
-    def compute_acceptance_ratio(cur_state, new_state, *args):
-        """ This function calculates the acceptance_ratio
-        `alpha = f(x')/f(x_t)`
-        for a proposed new state `x'`
-        given the current state `x_t`
-        """
-
-        # calculate a_1 = P(x') / P(x)
-        probability_ratio = compute_probability_ratio(cur_state, new_state, *args)
-
-        log_small_horizontal_line()
-
-        # calculate a_2 = g(x|x') / g(x'|x)
-        proposal_density_ratio = compute_proposal_density_ratio(cur_state, new_state, *args)
-
-        # calculate min(1, a_1 * a_2)
-        acceptance_ratio = min(np.ones_like(probability_ratio), probability_ratio * proposal_density_ratio)
-
-        log_small_horizontal_line()
-        log.debug(f"{'acceptance_ratio':<30}{acceptance_ratio:} = min(1.0, {probability_ratio * proposal_density_ratio:})")
-
-        return acceptance_ratio
-
     def propose_new_state(self):
         """ Generate a possibly new state.
 
@@ -235,12 +137,13 @@ class MonteCarlo():
         would have to turn to scipy; something like `scipy.stats.truncnorm` from
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.truncnorm.html
         """
-        delta = rng.normal(
-            loc=self._offset,
+        samples = rng.normal(
+            loc=self._offset[:, ...],
             scale=self._stddev,
             size=self.walker_shape
         )
 
+        delta = np.concatenate(samples, axis=-1)
         new_state = self.walkers + delta
 
         return new_state
@@ -250,14 +153,20 @@ class MonteCarlo():
 
         Return `self.walker_shape` samples from the normal distribution
         specified by the `_init_offset` and `_init_stddev`
-        R"""
+        """
 
-        state = rng.normal(
-            loc=self._init_offset,
+        print(f"{self._init_offset.shape = }")
+        print(f"{self._init_stddev = }")
+        print(f"{self.walker_shape = }")
+        samples = rng.normal(
+            loc=self._init_offset[:, ...],
             scale=self._init_stddev,
             size=self.walker_shape
         )
-        return state
+
+        states = np.concatenate(samples, axis=-1)
+        print(f"{states.shape = }")
+        return states
 
     def metropolis_accept_step(self, acceptance_ratio):
         """ This function evaluates the 'proposed' new_state
@@ -281,8 +190,9 @@ class MonteCarlo():
         """ Using a standard Metropolis-Hastings algorithm
         see https://en.wikipedia.org/wiki/Metropolis%E2%80%93Hastings_algorithm
         """
+        record_steps = kwargs.get("record_steps", False)
 
-        if kwargs.get("record_steps", False):
+        if record_steps:
             list_of_states, list_of_psi, list_of_ratios, list_of_accepts = args
 
         # 1 - some input parameters that the step depends on
@@ -296,7 +206,6 @@ class MonteCarlo():
 
         # 3 - compute acceptance ratio
         acceptance_ratio = np.squeeze(2 * (new_psi - cur_psi))
-        # acceptance_ratio = compute_acceptance_ratio(cur_state, new_state, dim_of_samples, *args)
 
         if record_steps:
             list_of_ratios.append(acceptance_ratio[0])
