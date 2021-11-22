@@ -217,32 +217,88 @@ def exact_hamiltonian(atoms, nelectrons, potential_epsilon = 0.0):
 
 
 
-def r12_features(x, atoms, nelectrons, keep_pos=True, flatten=False,
+def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
                  atomic_coords=False):
     '''
+    Adds physically-motivated features depending upon electron distances.
     
+    The tensor of electron positions is extended to include the distance of
+    each electron to each nucleus and distance between each pair of electrons.
 
     Parameters
     ----------
-    x : TYPE
-        DESCRIPTION.
-    atoms : TYPE
-        DESCRIPTION.
-    nelectrons : TYPE
-        DESCRIPTION.
-    keep_pos : TYPE, optional
-        DESCRIPTION. The default is True.
-    flatten : TYPE, optional
-        DESCRIPTION. The default is False.
-    atomic_coords : TYPE, optional
-        DESCRIPTION. The default is False.
+    x : Tensor | shape(batch_size,nelectrons*ndim) 
+                 or (batch_size, nelectrons, ndim)
+        Electron positions, ndim is the dimensionality of the system.
+    atoms : List of object
+        list of atom objects for each atom in the system.
+    nelectrons : Integer
+        The number of electrons.
+    keep_pos : Boolian, optional
+        If True includes the original electron positions in the output.
+        The default is True.
+    flatten : Boolian, optional
+        If True, returns the distances as a flat vector for each element of 
+        the batch If False, return the atom-electron distnaces and electron-
+        electron distances each as 3D arrays. 
+        The default is False.
+    atomic_coords : Boolian, optional
+        If True, replace the original positon of the electrons with the
+        position of the electrons relative to all atoms.
+        The default is False.
 
     Returns
     -------
-    None.
-
+    If flatten is true, keep_pos is true and atomic_coords is false:
+        Tensor of shape (batch_size, ndim*Ne + Ne*Na + Ne(Ne-1)/2), where Ne
+        (Na) is the number of electrons (atoms). The first ndim*Ne terms are
+        the original x, the next Ne terms are |x_i - R_1|, where R_1 is the 
+        position of the first nucleus (and so on for each atom), and the
+        remaining terms are |x_i - x_j| for each (i,j) pair, where i and j run
+        over all electrons with i varied slowest.
+    If flatten is true and keep_pos is false: 
+        It does not include the first ndim*Ne features.
+    If flatten is false and keep_pos is false:
+        Tensors of shape (batch_size, Ne, Na) and (batch_size, Ne, Ne)
+    If flatten is false and keep_pos is true:
+        Same as above, and also a tensor of size (batch_size, Ne, ndim)
+    If atomic_coords is true:
+        The same as if keep_pos is true, except the ndim*Ne coordinates
+        corresponding to the original positions are replaced by ndim*Ne*Na
+        coordinates corresponding to the different from each electron position
+        to each atomic position.
     '''
     
+    ## Converts e_post to the same size
+    if len(x.shape) == 2:
+        e_posts = torch.reshape(e_post,[e_post.shape[0],nelectrons,-1])
+    else:
+        e_posts = e_post
+    
+    ## Coordinates of the nucleus
+    coords = torch.stack([torch.tensor([atom.coords,dtype=x.dtype.base_dtype])]
+                         for atom in atoms)
+    
+    coords = torch.unsqueeze(torch.unsqueeze(coords, 0), 0)
+    
+    ## Converts the absolute electron positions to positions relative to the
+    ## nucleus'
+    e_posts_atomic = torch.unsqueeze(e_posts, 2) - coords
+    
+    ## The distance between the electron and the nucleus'
+    r_ae = torch.norm(e_posts_atomic, dim=-1)
+    
+    ## The distance between the electron pairs.
+    r_ee = np.zeros((nelectrons, nelectrons), dtype=object)
+    for i in range(nelectrons):
+        for j in range(i+1, nelectrons):
+            r_ee[i,j] = torch.norm(e_posts[:,i,:]-e_posts[:,j,:], 
+                                   dim=1, keepdim=True)
+            
+    if flatten:
+        r_ae = torch.reshape(r_ae, [r_ae.shape[0],-1])
+        if nelectrons > 1:
+            r_ee = 
     
     
     
