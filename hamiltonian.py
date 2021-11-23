@@ -21,9 +21,9 @@ def kinetic_from_log(f,x):
     Parameters
     ----------
     f : Torch Tensor
-        Tensor for the wavefunction components
+        The log psi function
     x : Torch Tensor
-        Tensor for the coordinates
+        Tensor for the coordinates.
 
     Returns
     -------
@@ -32,7 +32,8 @@ def kinetic_from_log(f,x):
     '''
     
     df = torch.autograd(f,x)[0]
-    for i in range(len(f))
+    for i in range(len(f)):
+        
         
     
     
@@ -209,7 +210,7 @@ def exact_hamiltonian(atoms, nelectrons, potential_epsilon = 0.0):
     def _hamiltonian(f, x):
         logpsi, signpsi = f(x)
         psi = torch.exp(logpsi) * signpsi
-        hpsi = psi * (k_fn(logpsi, x) + v_fn(x))
+        hpsi = psi * (k_fn(logpsi, positons) + v_fn(positions))
         return psi, hpsi
     
     return _hamiltonian
@@ -298,7 +299,36 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
     if flatten:
         r_ae = torch.reshape(r_ae, [r_ae.shape[0],-1])
         if nelectrons > 1:
-            r_ee = 
+            r_ee = torch.cat(r_ee[np.triu_indices(nelectrons,k=1)].tolist(),
+                             axis=1)
+        else:
+            r_ee = torch.zeros([r_ae.shape[0],0])
+        
+        if keep_pos:
+            if atomic_coords:
+                e_posts_atomic = torch.reshape(e_posts_atomic,
+                                               [e_posts_atomic[0],-1])
+                return torch.cat([r_ae, r_ee, e_posts_atomic], dim=1)
+            else:
+                return torch.cat([r_ae, r_ee, e_post], dim=1)
+        else:
+            return torch.cat([r_ae,r_ee],dim=1)
+    else:
+        zeros_like = torch.zeros((e_posts.shape[0],1), 
+                                 dtype=x.dtype.base_dtype)
+        
+        for i in range(nelectrons):
+            r_ee[i,i] = zeros_like
+            for j in range(i):
+                r_ee[i,j] = r_ee[j,i]
+        r_ee = torch.transpose(torch.stack(r_ee.tolist(),[2,0,1,3]))
+        if keep_pos:
+            if atomic_coords:
+                return r_ae, r_ee, e_posts_atomic
+            else:
+                return r_ae, r_ee, e_post
+        else:
+            r_ae, r_ee
     
     
     
