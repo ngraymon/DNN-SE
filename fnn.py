@@ -6,6 +6,7 @@ This module defines the neural network.
 
 # system imports
 import itertools as it
+from os import walk
 
 # third party imports
 import torch
@@ -24,6 +25,7 @@ class FermiNet(torch.nn.Module):
         self.n, self.I = n, I = len(electron_positions), len(nuclei_positions)
         self.n_up = n_up
         self.num_determinants = num_determinants
+        self.nuclei_positions = nuclei_positions
 
         """ default configuration, ensures correct dimensions in first layer, and keeps all h vectors the same length
 
@@ -36,7 +38,7 @@ class FermiNet(torch.nn.Module):
 
         self.layers = [FermiLayer(n, custom_h_sizes[i], custom_h_sizes[i+1]) for i in range(L)]
 
-        self.preprocess(electron_positions, nuclei_positions)
+        self.preprocess(electron_positions)
 
         # Randomly initialise trainable parameters:
         self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, custom_h_sizes[-1][0]))# w vectors
@@ -46,12 +48,12 @@ class FermiNet(torch.nn.Module):
         self.omega_weights = torch.nn.Parameter(torch.rand(self.num_determinants))  # omega scalars for summing determinants
 
 
-    def preprocess(self, electron_positions, nuclei_positions):
+    def preprocess(self, electron_positions):
         # inputs in format [single_h_vecs_vector, double_h_vecs_matrix]
         self.inputs = [None, None]  # to be processed
 
         # single stream inputs:
-        eN_vectors = np.array([[i-j for j in nuclei_positions] for i in electron_positions])
+        eN_vectors = np.array([[i-j for j in self.nuclei_positions] for i in electron_positions])
         self.eN_vectors = torch.from_numpy(eN_vectors)
 
         self.inputs[0] = torch.from_numpy(np.array([
@@ -79,12 +81,16 @@ class FermiNet(torch.nn.Module):
             for i in range(self.n)
         ]))
 
-
-    def forward(self, electron_positions=None, nuclei_positions=None):
+    ### 'electron_positions' and 'walker' are aliases, for readability
+    ### If walker is given, that is used as the electron_positions instead
+    ### This functionality isn't necessary, it's to help if people don't realise the walkers are just electron positions
+    def forward(self, electron_positions=None, walker=None):
         """ x """
 
-        if (electron_positions != None) and (nuclei_positions != None):
-            self.preprocess(electron_positions, nuclei_positions)
+        if walker != None: ################    walker is an alias of electron_positions
+            electron_positions = walker ###    walker is an alias of electron_positions
+        if electron_positions != None:
+            self.preprocess(electron_positions)
 
         layer_outputs = [self.inputs]
         for i in self.layers[:-1]:
