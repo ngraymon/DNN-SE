@@ -87,15 +87,15 @@ class FermiNet(torch.nn.Module):
     def forward(self, electron_positions=None, walker=None, multi=False):
         """ x """
 
-        if walker != None: ################    walker is an alias of electron_positions
+        if walker is not None: ################    walker is an alias of electron_positions
             electron_positions = walker ###    walker is an alias of electron_positions
-        if electron_positions != None:
+        if electron_positions is not None:
             self.preprocess(electron_positions)
 
         # if multi is True, then the network forwards a list of walkers and returns a list of outputs
         if multi:
             return [self.forward(electron_positions=electron_positions[i]) for i in range(len(electron_positions))]
-        
+
 
         layer_outputs = [self.inputs]
         for i in self.layers[:-1]:
