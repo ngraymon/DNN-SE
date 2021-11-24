@@ -35,6 +35,7 @@ class FermiNet(torch.nn.Module):
         if custom_h_sizes is False:
             custom_h_sizes = [[4*I, 4] for i in range(L+1)]
             custom_h_sizes[-1][1] = 0  # layers that are not connected have a weight of zero
+        print(custom_h_sizes)
 
         self.layers = [FermiLayer(n, custom_h_sizes[i], custom_h_sizes[i+1]) for i in range(L)]
 
@@ -98,7 +99,10 @@ class FermiNet(torch.nn.Module):
 
 
         layer_outputs = [self.inputs]
+        counter = 0
         for i in self.layers[:-1]:
+            counter += 1
+            print(counter)
             layer_outputs.append(i.forward(layer_outputs[-1], self.n_up))
 
         layer_outputs.append(self.layers[-1].forward(layer_outputs[-1], self.n_up))
@@ -203,15 +207,19 @@ class FermiLayer(torch.nn.Module):
         # double layers:
         # double_output = torch.tanh(torch.mul(self.w_matrices, double_h) + self.c_vectors)#Note: check dimensions order for @ (np.matmul) are correct??
         # Note: check dimensions order for torch.mul are correct??
-        double_output = torch.tanh(
-            torch.squeeze(
-                torch.bmm(
-                    torch.flatten(self.w_matrices, end_dim=1),
-                    torch.flatten(double_h[:, :, :, None], end_dim=1)
-                ),
-                dim=2
-            ) + torch.flatten(self.c_vectors, end_dim=1)
-        )
+        if self.w_matrices.size()[-1] == 0:
+            w_mats_size = self.w_matrices.size()
+            double_output = torch.zeros(w_mats_size[0]*w_mats_size[1], w_mats_size[-2], 1)
+        else:
+            double_output = torch.tanh(
+                torch.squeeze(
+                    torch.bmm(
+                        torch.flatten(self.w_matrices, end_dim=1),
+                        torch.flatten(double_h[:, :, :, None], end_dim=1)
+                    ),
+                    dim=2
+                ) + torch.flatten(self.c_vectors, end_dim=1)
+            )
 
         # reshape:
         shape = list(double_output.shape)[1:]
