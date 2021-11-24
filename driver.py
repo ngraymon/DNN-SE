@@ -380,10 +380,10 @@ def generate_electron_position_vector(molecule, electron_spec):
     print(f"{down_spin_list = }")
 
     both_spins_list = np.concatenate(up_spin_list + down_spin_list)
-    print("walker tensor")
+    print("walker tensor:")
     for i in range(len(both_spins_list) // 3):
         x_y_z = both_spins_list[i*3:(i+1)*3]
-        print(f"electron {i+1} : {x_y_z}")
+        print(f"   electron {i+1} : {x_y_z}")
 
     # glue the two lists together
     electron_positions = np.concatenate(up_spin_list + down_spin_list)
@@ -542,7 +542,7 @@ def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     return Train(network, mcmc, hamiltonian_operators, hartree_fock, param)
 
 
-def prepare_scf(molecule, spins, config, using_scf_flag=False):
+def prepare_scf(molecule, spin_config, config, using_scf_flag=False):
     """ create the SCF object
     This currently doesn't do anything as we don't have a SCF module
     implemented yet.
@@ -551,7 +551,7 @@ def prepare_scf(molecule, spins, config, using_scf_flag=False):
         return None
 
     scf_kwargs = {
-        'nof_electrons': spins,
+        'nof_electrons': sum(spin_config),
         'restricted': False,
         'basis': config.basis
     }
@@ -566,18 +566,21 @@ def prepare_scf(molecule, spins, config, using_scf_flag=False):
     return scf_object
 
 
-def prepare_network(molecule, nof_electrons):
+def prepare_network(molecule, nof_electrons, spin_config):
     """ create the Network object
     Currently the Train class assumes there is a network object and it needs to provide the following functions:
         - `network.parameters()`, which returns relevant network parameters for
         - `network.zero_grad()`
         - `network.forward(walkers)`, which assumes it takes a `walkers` object that is the return value from a `mcmc.create()` call
     """
-    L, n_up = 5, 1
+    n_up, n_down = spin_config
+
+    number_of_layers = 5
+
     e_pos = np.array([[1, 1, 1],  [-1, 1, 1]])
     n_pos = np.array([[0, 2, 1],  [0, 0, 1]])
 
-    return fnn.FermiNet(L, n_up, e_pos, n_pos, custom_h_sizes=False, num_determinants=2)
+    return fnn.FermiNet(number_of_layers, n_up, e_pos, n_pos, custom_h_sizes=False, num_determinants=2)
 
 
 def prepare_hamiltonian(molecule, nof_electrons):
@@ -590,7 +593,7 @@ def prepare_hamiltonian(molecule, nof_electrons):
     return None
 
 
-def prepare_mean_array(config, molecule, spins):
+def prepare_mean_array(config, molecule, spin_config):
     """ Check that the electron positions are valid (and fixes them if not) """
 
     # first we need to generate the offsets/means which define the distribution
@@ -600,12 +603,12 @@ def prepare_mean_array(config, molecule, spins):
     # if no offsets were provided then we need to calculate them
     if init_offset is None:
         log.info("Attempting to generate new electron positions")
-        init_offset = generate_electron_position_vector(molecule, spins)
+        init_offset = generate_electron_position_vector(molecule, spin_config)
         return init_offset
 
     # if offsets were provided
     else:
-        nof_electrons = sum(spins)
+        nof_electrons = sum(spin_config)
         # check that we have 3*N init_offsets
         if len(init_offset) == 3 * nof_electrons:
             """
@@ -647,7 +650,7 @@ def prepare_mcmc(config, network_object, init_offset, precision):
 # ------------------------------ main function ------------------------------ #
 
 
-def main(molecule, spins):
+def main(molecule, spin_config):
     """ Wrapper function for Train.train().
 
     Handles all the finicky details of setting up objects/classes.
@@ -673,7 +676,7 @@ def main(molecule, spins):
 
     # some other keyword arguments?
     kwargs = {}
-    nof_electrons = sum(spins)
+    nof_electrons = sum(spin_config)
     # probably want to use pytorch floats?
     precision = torch.float64 if flags.double_precision else torch.float32
 
@@ -681,16 +684,16 @@ def main(molecule, spins):
     using_scf_flag = False
 
     # create the network object
-    network_object = prepare_network(molecule, nof_electrons)
+    network_object = prepare_network(molecule, nof_electrons, spin_config)
 
     # currently only returns `None`
-    scf_object = prepare_scf(molecule, spins, pretraining_config, using_scf_flag=False)
+    scf_object = prepare_scf(molecule, spin_config, pretraining_config, using_scf_flag=False)
 
     # create the Hamiltonian operators
     hamiltonian_operators = prepare_hamiltonian(molecule, nof_electrons)
 
     # create initial means/offsets to define the sampling's normal distribution
-    init_means = prepare_mean_array(mcmc_config, molecule, spins)
+    init_means = prepare_mean_array(mcmc_config, molecule, spin_config)
 
     # create the Monte Carlo object
     mcmc_object = prepare_mcmc(mcmc_config, network_object, init_means, precision)

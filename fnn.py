@@ -48,7 +48,6 @@ class FermiNet(torch.nn.Module):
         self.sigma_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))  # sigma scalars for decaying envelopes
         self.omega_weights = torch.nn.Parameter(torch.rand(self.num_determinants))  # omega scalars for summing determinants
 
-
     def preprocess(self, electron_positions):
         # inputs in format [single_h_vecs_vector, double_h_vecs_matrix]
         self.inputs = [None, None]  # to be processed
@@ -88,15 +87,18 @@ class FermiNet(torch.nn.Module):
     def forward(self, electron_positions=None, walker=None, multi=False):
         """ x """
 
+        print(electron_positions)
+        print(self.n)
+
         if walker is not None: ################    walker is an alias of electron_positions
             electron_positions = walker ###    walker is an alias of electron_positions
+
         if electron_positions is not None:
             self.preprocess(electron_positions)
 
         # if multi is True, then the network forwards a list of walkers and returns a list of outputs
         if multi:
             return [self.forward(electron_positions=electron_positions[i]) for i in range(len(electron_positions))]
-
 
         layer_outputs = [self.inputs]
         for i in self.layers[:-1]:
@@ -158,7 +160,6 @@ class FermiLayer(torch.nn.Module):
         """
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))
-
 
     def forward(self, input_tensor, n_up):
         """ x """

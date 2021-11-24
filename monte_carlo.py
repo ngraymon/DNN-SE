@@ -98,7 +98,8 @@ class MonteCarlo():
 
         # the empty dimension `1` at the end is necessary for correct concatenation
         # when sampling
-        self.walker_shape = (len(initial_offset), batch_size, 1)
+        # self.walker_shape = (batch_size, len(initial_offset))
+        self.batch_size = batch_size
         # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
         self.walkers = self._initial_random_states()
 
@@ -137,13 +138,12 @@ class MonteCarlo():
         would have to turn to scipy; something like `scipy.stats.truncnorm` from
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.truncnorm.html
         """
-        samples = rng.normal(
-            loc=self._offset[:, ...],
-            scale=self._stddev,
-            size=self.walker_shape
-        )
 
-        delta = np.concatenate(samples, axis=-1)
+        delta = np.array([
+            rng.normal(loc=self._init_offset, scale=self._init_stddev,)
+            for b in range(self.batch_size)
+        ])
+
         new_state = self.walkers + delta
 
         return new_state
@@ -157,14 +157,11 @@ class MonteCarlo():
 
         print(f"{self._init_offset.shape = }")
         print(f"{self._init_stddev = }")
-        print(f"{self.walker_shape = }")
-        samples = rng.normal(
-            loc=self._init_offset[:, ...],
-            scale=self._init_stddev,
-            size=self.walker_shape
-        )
+        states = np.array([
+            rng.normal(loc=self._init_offset, scale=self._init_stddev,)
+            for b in range(self.batch_size)
+        ])
 
-        states = np.concatenate(samples, axis=-1)
         print(f"{states.shape = }")
         return states
 
