@@ -99,10 +99,7 @@ class FermiNet(torch.nn.Module):
 
 
         layer_outputs = [self.inputs]
-        counter = 0
         for i in self.layers[:-1]:
-            counter += 1
-            print(counter)
             layer_outputs.append(i.forward(layer_outputs[-1], self.n_up))
 
         layer_outputs.append(self.layers[-1].forward(layer_outputs[-1], self.n_up))
