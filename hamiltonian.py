@@ -28,12 +28,17 @@ def kinetic_from_log(f,x):
     Returns
     -------
     The kinetic energy function.
-
     '''
     
     df = torch.autograd(f,x)[0]
-    for i in range(len(f)):
-        
+    lapl_tensor = []
+    for i in range(x.shape[1]):
+        lapl_elem = torch.autograd(torch.unsqueeze(df[...,i], -1),x)
+        lapl_tensor.append(lapl_elem)
+    lapl_tensor = torch.tensor(lapl_tensor)
+    lapl = torch.sum(lapl_tensor) + torch.sum(df**2)
+    return -0.5*torch.unsqueeze(lapl,-1)
+    
         
     
     
