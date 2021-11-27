@@ -33,7 +33,7 @@ def kinetic_from_log(f,x):
     df = torch.autograd(f,x)[0]
     lapl_tensor = []
     for i in range(x.shape[1]):
-        lapl_elem = torch.autograd(torch.unsqueeze(df[...,i], -1),x)
+        lapl_elem = torch.autograd(torch.unsqueeze(df[...,i], -1),x)[0][...,i]
         lapl_tensor.append(lapl_elem)
     lapl_tensor = torch.tensor(lapl_tensor)
     lapl = torch.sum(lapl_tensor) + torch.sum(df**2)
