@@ -193,6 +193,8 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
             + nuclear_nuclear(e_positions.dtype)
         )
 
+    return kinetic_from_log, potential
+
 
 def exact_hamiltonian(atoms, nelectrons, potential_epsilon=0.0):
     '''
