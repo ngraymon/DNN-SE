@@ -280,7 +280,7 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
 
     # Converts e_post to the same size
     if len(e_post.shape) == 2:
-        e_posts = torch.reshape(e_post, [e_post.shape[0], nelectrons, -1])
+        e_posts = torch.reshape(e_post, (e_post.shape[0], nelectrons, -1))
     else:
         e_posts = e_post
 
@@ -305,12 +305,16 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
     for i in range(nelectrons):
         for j in range(i+1, nelectrons):
             r_ee[i, j] = torch.norm(
-                e_posts[:, i, :]-e_posts[:, j, :],
+                e_posts[:, i, :] - e_posts[:, j, :],
                 dim=1, keepdim=True
             )
 
     if flatten:
-        r_ae = torch.reshape(r_ae, [r_ae.shape[0], -1])
+
+        # unfurl the r_ae
+        r_ae = torch.reshape(r_ae, (r_ae.shape[0], -1))
+
+        # unfurl the r_ee
         if nelectrons > 1:
             r_ee = torch.cat(
                 r_ee[np.triu_indices(nelectrons, k=1)].tolist(),
@@ -319,17 +323,25 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
         else:
             r_ee = torch.zeros([r_ae.shape[0], 0])
 
+        # we always return (at least) the
+        # nuclear-electron and electron-electron
+        return_list = [r_ae, r_ee]
+
+        # if we need to also return the original positions
         if keep_pos:
             if atomic_coords:
-                e_posts_atomic = torch.reshape(
+                positions = torch.reshape(
                     e_posts_atomic,
-                    [e_posts_atomic[0], -1]
+                    (e_posts_atomic[0], -1)
                 )
-                return torch.cat([r_ae, r_ee, e_posts_atomic], dim=1)
             else:
-                return torch.cat([r_ae, r_ee, e_post], dim=1)
-        else:
-            return torch.cat([r_ae, r_ee], dim=1)
+                positions = e_post
+
+            return_list.append(positions)
+
+        return torch.cat(return_list, dim=1)
+
+    # don't need to unflatten
     else:
         zeros_like = torch.zeros(
             (e_posts.shape[0], 1),
@@ -339,11 +351,13 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
         # invert the `r_ee` and zero the diagonal?
         for i in range(nelectrons):
             r_ee[i, i] = zeros_like
+
             for j in range(i):
                 r_ee[i, j] = r_ee[j, i]
 
-        r_ee = torch.transpose(torch.stack(r_ee.tolist(), [2, 0, 1, 3]))
+        r_ee = torch.transpose(torch.stack(r_ee.tolist(), (2, 0, 1, 3)))
 
+        # if we need to also return the original positions
         if keep_pos:
             positions = e_posts_atomic if atomic_coords else e_post
         else:
