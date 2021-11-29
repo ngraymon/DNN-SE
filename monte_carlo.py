@@ -172,10 +172,26 @@ class MonteCarlo():
 
         # generate our uniform random number
         u = np.random.uniform(size=self.walkers.shape)
-        log.debug(f"{'uniform random number':<30}{u[0]:.8f}")
+        log.debug(f"{'uniform random number at index 0':<30}{u[0, ...]}")
 
         # i have to call forward to generate my new phis
-        new_phi = self.net.forward(self.walkers)[0]
+
+        if False:
+            """ if I just give walkers then I get  the following result
+            new_phi: tensor(nan, grad_fn=<SumBackward0>)
+            """
+            new_phi = self.net.forward(self.walkers)
+            print(new_phi.shape)
+            print(new_phi)
+        else:
+            """ however if I use the `multi` flag then I get this error
+                fnn.py", line 75, in <listcomp>
+            ValueError: zero-dimensional arrays cannot be concatenated
+            """
+            multi = bool(len(self.walkers.shape) >= 2)
+            new_phi = self.net.forward(self.walkers, multi=multi)
+            print(new_phi.shape)
+            print(new_phi)
 
         # test the condition
         accepted = bool(u <= acceptance_ratio)
@@ -193,8 +209,8 @@ class MonteCarlo():
             list_of_states, list_of_psi, list_of_ratios, list_of_accepts = args
 
         # 1 - some input parameters that the step depends on
-        cur_state = self.state.copy()
-        cur_psi = self.psi.copy()
+        cur_state = self.walkers
+        cur_psi = self.psi
         accuracy = self.rolling_accuracy
 
         # 2 - draw a new step and wavefunction

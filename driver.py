@@ -26,7 +26,7 @@ import torch
 from flags import flags
 from log_conf import log
 import kfac
-# import hamiltonian
+import hamiltonian
 import system
 import fnn
 import elements
@@ -589,8 +589,7 @@ def prepare_hamiltonian(molecule, nof_electrons):
         - `H.kinetic(phi, walkers)`, which returns the kinetic value as a torch tensor?
         - `H.potential(walkers)`, which returns the potential value as a torch tensor?
     """
-    # return hamiltonian.operators(molecule, nof_electrons)
-    return None
+    return hamiltonian.operators(molecule, nof_electrons)
 
 
 def prepare_mean_array(config, molecule, spin_config):

@@ -42,8 +42,6 @@ class Train():
         if bool_KFAC:
             self.train_KFAC()
 
-        self.mcmc.init()
-
         losstot = []
         phi_phisgn = [[], ]
 
@@ -53,7 +51,7 @@ class Train():
             self.net.zero_grad()
             # get wavefunction for each one of these configuration, creates the configurations for each electron
             # for a given batch size
-            phi, walkers, accuracy = self.mcmc.update()
+            phi, walkers, accuracy = self.mcmc.preform_one_step()
 
             # from the Hamiltonian extract potential and kinetic energy
             kinetic = self.kinetic(phi, walkers).detach()
