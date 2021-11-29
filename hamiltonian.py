@@ -236,7 +236,7 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
 
     Parameters
     ----------
-    x : Tensor | shape(batch_size, nelectrons*ndim)
+    e_post : Tensor | shape(batch_size, nelectrons*ndim)
                  or (batch_size, nelectrons, ndim)
         Electron positions, ndim is the dimensionality of the system.
     atoms : List of object
@@ -279,14 +279,14 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
     '''
 
     # Converts e_post to the same size
-    if len(x.shape) == 2:
+    if len(e_post.shape) == 2:
         e_posts = torch.reshape(e_post, [e_post.shape[0], nelectrons, -1])
     else:
         e_posts = e_post
 
     # Coordinates of the nucleus
     coords = torch.stack(
-        [torch.tensor([atom.coords, dtype=x.dtype.base_dtype])]
+        [torch.tensor(atom.coords, dtype=e_post.dtype.base_dtype)]
         for atom in atoms
     )
 
@@ -333,7 +333,7 @@ def r12_features(e_post, atoms, nelectrons, keep_pos=True, flatten=False,
     else:
         zeros_like = torch.zeros(
             (e_posts.shape[0], 1),
-            dtype=x.dtype.base_dtype
+            dtype=e_post.dtype.base_dtype
         )
 
         # invert the `r_ee` and zero the diagonal?
