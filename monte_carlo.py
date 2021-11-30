@@ -114,9 +114,9 @@ class MonteCarlo():
 
         return
 
-    def compute_psi(self):
+    def compute_psi(self, *args, **kwargs):
         """ x """
-        return self.net.forward(self.walkers)
+        return self.net.forward(self.walkers, *args, **kwargs)
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):
         """
@@ -178,7 +178,7 @@ class MonteCarlo():
 
         # i have to call forward to generate my new phis
         multi = bool(len(self.walkers.shape) >= 3)
-        new_phi = self.net.forward(self.walkers, multi=multi)
+        new_phi = self.compute_psi(self.walkers, multi=multi)
 
         # test the condition
         accepted = u <= acceptance_ratio
@@ -202,7 +202,7 @@ class MonteCarlo():
 
         # 2 - draw a new step and wavefunction
         new_state = self.propose_new_state()
-        new_psi = self.net.forward(new_state)
+        new_psi = self.compute_psi(new_state)
         assert not torch.isnan(new_psi), 'New psi is nan'
 
         # 3 - compute acceptance ratio
