@@ -575,13 +575,12 @@ def prepare_network(molecule, nof_electrons, spin_config):
     """
     n_up, n_down = spin_config
 
-    number_of_layers = 5
-
     # create nuclear positions
     n_pos = np.array([np.array(atom.coords) for atom in molecule])
     e_pos = np.zeros_like(n_pos)
+    hidden_units = flags.hidden_units
 
-    return fnn.FermiNet(number_of_layers, n_up, e_pos, n_pos, custom_h_sizes=False, num_determinants=2)
+    return fnn.FermiNet(n_up, e_pos, n_pos, hidden_units, num_determinants=2)
 
 
 def prepare_hamiltonian(molecule, nof_electrons):
