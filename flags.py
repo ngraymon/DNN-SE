@@ -4,6 +4,7 @@ We're starting with a SimpleNamespace for simplicity.
 https://docs.python.org/3/library/types.html#types.SimpleNamespace
 We could also use namedtuples's:
 https://docs.python.org/3/library/collections.html#collections.namedtuple
+
 In FNN they use googles abseil, but starting with that package will probably present a roadblock to getting a MVP
 so it is advisable to hold off for now.
 https://abseil.io/
@@ -13,6 +14,7 @@ https://abseil.io/
 from os.path import abspath, dirname, join
 from types import SimpleNamespace
 import numpy as np
+
 # third party imports
 
 # local imports
@@ -103,16 +105,17 @@ flags.cmdline_file = 'command_line_arguments.txt'
 
 
 # flags for MCMC chain
-
-flags.mcmc_burn_in = 100  # number of burn in steps after pretraining
-                          # if 0 will not burn in or reinitialise walkers
+""" number of burn in steps after pretraining
+if 0 will not burn in or reinitialize walkers """
+flags.mcmc_burn_in = 100
 flags.mcmc_steps_per_update = 10  # number of mcmc steps between each update
-flags.mcmc_initial_width = 0.8  # Gaussian used to generate the initial electron configuration
+flags.mcmc_offset = 0.0  # isn't actually used
+flags.mcmc_initial_stddev = 0.8  # Gaussian used to generate the initial electron configuration
 flags.mcmc_move_width = 0.2  # Width of the Gaussian used for the random moves
-flags.mcmc_initial_offset = None  # was in Neil's code, must ask if this is inherited or needs initialisation
-flags.mcmc_initial_stddev = None  # was in Neil's code, must ask if this is inherited or needs initialisation
-flags.mcmc_init_means = ''  # If left empty, the electrons are assigned to atoms based on isolated spin configuration
-                            # The initial configurations of the the 3*nelectrons and their positions
+
+""" If left empty, the electrons are assigned to atoms based on isolated spin configuration
+    The initial configurations of the the 3*nelectrons and their positions """
+flags.mcmc_init_means = ''
 
 # flags for Will's Pseudocode
 """Must ask Will how many of these are actually required
@@ -249,8 +252,8 @@ original_flags.mcmc_burn_in = 100  # number of burn in steps after pretraining
 original_flags.mcmc_steps_per_update = 10  # number of mcmc steps between each update
 original_flags.mcmc_initial_width = 0.8  # Gaussian used to generate the initial electron configuration
 original_flags.mcmc_move_width = 0.2  # Width of the Gaussian used for the random moves
-original_flags.mcmc_initial_offset =  # was in Neil's code, must ask if this is inherited or needs initialisation
-original_flags.mcmc_initial_stddev =  # was in Neil's code, must ask if this is inherited or needs initialisation
+original_flags.mcmc_initial_offset = None  # was in Neil's code, must ask if this is inherited or needs initialisation
+original_flags.mcmc_initial_stddev = None  # was in Neil's code, must ask if this is inherited or needs initialisation
 original_flags.mcmc_init_means = ''  # If left empty, the electrons are assigned to atoms based on isolated spin configuration
                                      # The initial configurations of the the 3*nelectrons and their positions
 
