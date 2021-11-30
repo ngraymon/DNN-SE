@@ -109,6 +109,7 @@ class MonteCarlo():
 
         # how we analyze our mc progress
         self.psi = self.compute_psi()
+        assert not torch.isnan(self.psi), 'Initial wavefunction is nan'
         self.rolling_accuracy = 0.0
 
         return
@@ -202,6 +203,7 @@ class MonteCarlo():
         # 2 - draw a new step and wavefunction
         new_state = self.propose_new_state()
         new_psi = self.net.forward(new_state)
+        assert not torch.isnan(new_psi), 'New psi is nan'
 
         # 3 - compute acceptance ratio
         acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
@@ -235,7 +237,7 @@ class MonteCarlo():
         # 6 - update relevant objects/parameters
         self.state = cur_state
         self.psi = cur_psi
-        self.rolling_accuracy = accuracy = torch.mean(accepted_bools.astype(f32))
+        self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
 
         return cur_state, cur_psi, accuracy
 

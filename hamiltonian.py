@@ -12,6 +12,7 @@ Import this module as:
 # third party imports
 import numpy as np
 import torch
+from torch.autograd import grad
 # local imports
 
 
@@ -33,10 +34,10 @@ def kinetic_from_log(f, x):
     '''
 
     lapl_tensor = []
-    df = torch.autograd(f, x)[0]
+    df = grad(f, x)
 
     for i in range(x.shape[1]):
-        lapl_elem = torch.autograd(torch.unsqueeze(df[..., i], -1), x)[0][..., i]
+        lapl_elem = grad(torch.unsqueeze(df[..., i], -1), x)[0][..., i]
         lapl_tensor.append(lapl_elem)
 
     lapl_tensor = torch.tensor(lapl_tensor)
