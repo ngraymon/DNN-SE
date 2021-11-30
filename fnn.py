@@ -18,7 +18,7 @@ import numpy as np
 class FermiNet(torch.nn.Module):
     """ x """
 
-    def __init__(self, L, n_up, electron_positions, nuclei_positions, custom_h_sizes=False, num_determinants=10):
+    def __init__(self, n_up, electron_positions, nuclei_positions, hidden_units, num_determinants=10):
         """ x """
         super(FermiNet, self).__init__()
 
@@ -27,22 +27,17 @@ class FermiNet(torch.nn.Module):
         self.num_determinants = num_determinants
         self.nuclei_positions = nuclei_positions
 
-        """ default configuration, ensures correct dimensions in first layer, and keeps all h vectors the same length
+        L = len(hidden_units)
+        h_sizes = [[4*I, 4]] + hidden_units
+        h_sizes[-1][1] = 0  # layers that are not connected have a weight of zero
+        print(h_sizes)
 
-        the final double stream layer is not necessary
-        so setting `custom_h_sizes[-1]` to zero gives empty weight matrices and saves computations
-        """
-        if custom_h_sizes is False:
-            custom_h_sizes = [[4*I, 4] for i in range(L+1)]
-            custom_h_sizes[-1][1] = 0  # layers that are not connected have a weight of zero
-        print(custom_h_sizes)
-
-        self.layers = [FermiLayer(n, custom_h_sizes[i], custom_h_sizes[i+1]) for i in range(L)]
+        self.layers = [FermiLayer(n, h_sizes[i], h_sizes[i+1]) for i in range(L)]
 
         self.preprocess(electron_positions)
 
         # Randomly initialise trainable parameters:
-        self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, custom_h_sizes[-1][0]))# w vectors
+        self.final_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, h_sizes[-1][0]))# w vectors
         self.final_biases = torch.nn.Parameter(torch.rand(self.num_determinants, n))  # g scalars
         self.pi_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I)) # pi scalars for decaying envelopes
         self.sigma_weights = torch.nn.Parameter(torch.rand(self.num_determinants, n, I))  # sigma scalars for decaying envelopes
