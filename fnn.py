@@ -156,6 +156,10 @@ class FermiLayer(torch.nn.Module):
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))
 
+    def save(self, path):
+        torch.save(self, path)
+        print("FermiNet model saved to file '{0}'. To load, use 'model = torch.load({0})'".format(path))
+
     def forward(self, input_tensor, n_up):
         """ x """
 
