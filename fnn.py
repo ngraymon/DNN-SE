@@ -48,7 +48,14 @@ class FermiNet(torch.nn.Module):
         self.inputs = [None, None]  # to be processed
 
         # single stream inputs:
-        eN_vectors = np.array([[i-j for j in self.nuclei_positions] for i in electron_positions])
+
+        # alternative solution
+        # eN_vectors = np.empty((electron_positions.shape[0], self.nuclei_positions.shape[0], 3))
+        # for i, e in enumerate(electron_positions):
+        #     eN_vectors[i, ...] = e[np.newaxis, :] - self.nuclei_positions
+
+        eN_vectors = np.array([[np.array(i-j) for j in self.nuclei_positions] for i in electron_positions])
+
         self.eN_vectors = torch.from_numpy(eN_vectors)
 
         self.inputs[0] = torch.from_numpy(np.array([

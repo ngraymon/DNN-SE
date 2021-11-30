@@ -577,8 +577,9 @@ def prepare_network(molecule, nof_electrons, spin_config):
 
     number_of_layers = 5
 
-    e_pos = np.array([[1, 1, 1],  [-1, 1, 1]])
-    n_pos = np.array([[0, 2, 1],  [0, 0, 1]])
+    # create nuclear positions
+    n_pos = np.array([np.array(atom.coords) for atom in molecule])
+    e_pos = np.zeros_like(n_pos)
 
     return fnn.FermiNet(number_of_layers, n_up, e_pos, n_pos, custom_h_sizes=False, num_determinants=2)
 

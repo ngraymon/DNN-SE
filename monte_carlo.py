@@ -15,6 +15,7 @@ You can run it with
 from os.path import abspath, join, dirname
 
 # third party imports
+import torch
 import numpy as np
 from numpy import newaxis as NEW
 from numpy.random import default_rng
@@ -88,7 +89,7 @@ class MonteCarlo():
         self.net = network
 
         # record our distribution configuration
-        self._init_offset = initial_offset
+        self._init_offset = torch.tensor(initial_offset)
         self._init_stddev = initial_stddev
         self._offset = offset
         self._stddev = stddev
@@ -144,7 +145,7 @@ class MonteCarlo():
             for b in range(self.batch_size)
         ])
 
-        new_state = self.walkers + delta
+        new_state = self.walkers + torch.tensor(delta)
 
         return new_state
 
@@ -163,7 +164,7 @@ class MonteCarlo():
         ])
 
         print(f"{states.shape = }")
-        return states
+        return torch.tensor(states)
 
     def metropolis_accept_step(self, acceptance_ratio):
         """ This function evaluates the 'proposed' new_state
@@ -171,31 +172,16 @@ class MonteCarlo():
         """
 
         # generate our uniform random number
-        u = np.random.uniform(size=self.walkers.shape)
+        u = torch.rand(size=self.walkers.shape)
         log.debug(f"{'uniform random number at index 0':<30}{u[0, ...]}")
 
         # i have to call forward to generate my new phis
-
-        if False:
-            """ if I just give walkers then I get  the following result
-            new_phi: tensor(nan, grad_fn=<SumBackward0>)
-            """
-            new_phi = self.net.forward(self.walkers)
-            print(new_phi.shape)
-            print(new_phi)
-        else:
-            """ however if I use the `multi` flag then I get this error
-                fnn.py", line 75, in <listcomp>
-            ValueError: zero-dimensional arrays cannot be concatenated
-            """
-            multi = bool(len(self.walkers.shape) > 2)
-            new_phi = self.net.forward(self.walkers, multi=multi)
-            print(new_phi.shape)
-            print(new_phi)
+        multi = bool(len(self.walkers.shape) >= 3)
+        new_phi = self.net.forward(self.walkers, multi=multi)
 
         # test the condition
-        accepted = bool(u <= acceptance_ratio)
-        log.debug(f"{accepted=}")
+        accepted = u <= acceptance_ratio
+        log.debug(f"{accepted = }")
 
         return accepted, new_phi
 
@@ -218,7 +204,7 @@ class MonteCarlo():
         new_psi = self.net.forward(new_state)
 
         # 3 - compute acceptance ratio
-        acceptance_ratio = np.squeeze(2 * (new_psi - cur_psi))
+        acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
 
         if record_steps:
             list_of_ratios.append(acceptance_ratio[0])
@@ -238,8 +224,8 @@ class MonteCarlo():
 
         The same process is followed for `cur_psi` and `new_psi`.
         """
-        cur_state = np.where(accepted_bools, new_state, cur_state)
-        cur_psi = np.where(accepted_bools, new_psi, cur_psi)
+        cur_state = torch.where(accepted_bools, new_state, cur_state)
+        cur_psi = torch.where(accepted_bools, new_psi, cur_psi)
 
         # if we are storing our progress for analysis
         if record_steps:
@@ -249,7 +235,7 @@ class MonteCarlo():
         # 6 - update relevant objects/parameters
         self.state = cur_state
         self.psi = cur_psi
-        self.rolling_accuracy = accuracy = np.mean(accepted_bools.astype(f32))
+        self.rolling_accuracy = accuracy = torch.mean(accepted_bools.astype(f32))
 
         return cur_state, cur_psi, accuracy
 
