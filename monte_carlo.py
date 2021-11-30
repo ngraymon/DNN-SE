@@ -188,7 +188,7 @@ class MonteCarlo():
                 fnn.py", line 75, in <listcomp>
             ValueError: zero-dimensional arrays cannot be concatenated
             """
-            multi = bool(len(self.walkers.shape) >= 2)
+            multi = bool(len(self.walkers.shape) > 2)
             new_phi = self.net.forward(self.walkers, multi=multi)
             print(new_phi.shape)
             print(new_phi)
