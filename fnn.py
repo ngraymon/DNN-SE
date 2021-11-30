@@ -30,9 +30,9 @@ class FermiNet(torch.nn.Module):
         L = len(hidden_units)
         h_sizes = [[4*I, 4]] + hidden_units
         h_sizes[-1][1] = 0  # layers that are not connected have a weight of zero
-        print(h_sizes)
+        # print(h_sizes)
 
-        self.layers = [FermiLayer(n, h_sizes[i], h_sizes[i+1]) for i in range(L)]
+        self.layers = [FermiLayer(n, n_up, h_sizes[i], h_sizes[i+1]) for i in range(L)]
 
         self.preprocess(electron_positions)
 
@@ -83,14 +83,20 @@ class FermiNet(torch.nn.Module):
             for i in range(self.n)
         ]))
 
+    #saves the model to a file
+    def save(self, path):
+        torch.save(self, path)
+        print("FermiNet model saved to file '{0}'. To load, use 'model = torch.load({0})'".format(path))
+
+
     ### 'electron_positions' and 'walker' are aliases, for readability
     ### If walker is given, that is used as the electron_positions instead
     ### This functionality isn't necessary, it's to help if people don't realise the walkers are just electron positions
     def forward(self, electron_positions=None, walker=None, multi=False):
         """ x """
 
-        print(electron_positions)
-        print(self.n)
+        # print(electron_positions)
+        # print(self.n)
 
         if walker is not None: ################    walker is an alias of electron_positions
             electron_positions = walker ###    walker is an alias of electron_positions
@@ -130,6 +136,7 @@ class FermiNet(torch.nn.Module):
         d_up = torch.det(phi_up)
         d_down = torch.det(phi_down)
 
+
         # Weighted sum:
         wavefunction = torch.sum(self.omega_weights * d_up * d_down)  # sum of result of element-wise multiplications
 
@@ -139,11 +146,15 @@ class FermiNet(torch.nn.Module):
 class FermiLayer(torch.nn.Module):
     """ x """
 
-    def __init__(self, n, h_in_dims, h_out_dims):
+    def __init__(self, n, n_up, h_in_dims, h_out_dims):
         """ x """
         super().__init__()
 
-        f_vector_length = 3*h_in_dims[0] + 2*h_in_dims[1]
+        if (n_up == 0) or (n-n_up == 0):
+            #case with all electrons having same spin (i.e. no up spins or no down spins)
+            f_vector_length = 2*h_in_dims[0] + 1*h_in_dims[1]
+        else:
+            f_vector_length = 3*h_in_dims[0] + 2*h_in_dims[1]
 
         """ matrix and bias vector for each single stream's linear op applied to the f vector
             and yielding a vector of the output length
@@ -163,9 +174,6 @@ class FermiLayer(torch.nn.Module):
         self.w_matrices = torch.nn.Parameter(torch.rand(n, n, h_in_dims[1], h_out_dims[1]))
         self.c_vectors = torch.nn.Parameter(torch.rand(n, n, h_out_dims[1]))
 
-    def save(self, path):
-        torch.save(self, path)
-        print("FermiNet model saved to file '{0}'. To load, use 'model = torch.load({0})'".format(path))
 
     def forward(self, input_tensor, n_up):
         """ x """
@@ -174,14 +182,14 @@ class FermiLayer(torch.nn.Module):
         single_h, double_h = input_tensor[0].type(torch.FloatTensor), input_tensor[1].type(torch.FloatTensor)
         single_h_up, single_h_down = single_h[:n_up], single_h[n_up:]
         double_h_ups, double_h_downs = double_h[:, :n_up], double_h[:, n_up:]
-
-        single_g_up = torch.mean(single_h_up, 0)
-        single_g_down = torch.mean(single_h_down, 0)
-        double_g_ups = torch.mean(double_h_ups, 1)  # Note: double check which axis?
-        double_g_downs = torch.mean(double_h_downs, 1)  # Note: double check which axis?
-
+       
         n = len(input_tensor[0])
 
+        single_g_up = torch.mean(single_h_up, 0) if single_h_up.nelement() else torch.empty(0)
+        single_g_down = torch.mean(single_h_down, 0) if single_h_down.nelement() else torch.empty(0)
+        double_g_ups = torch.mean(double_h_ups, 1) if double_h_ups.nelement() else torch.empty(n, 0)
+        double_g_downs = torch.mean(double_h_downs, 1) if double_h_downs.nelement() else torch.empty(n, 0)
+        
         f_vectors = torch.stack([
             torch.cat((
                 single_h[i],
@@ -190,7 +198,7 @@ class FermiLayer(torch.nn.Module):
                 double_g_ups[i],
                 double_g_downs[i]
             )) for i in range(n)]).type(torch.FloatTensor)
-
+        
         # single_output = torch.tanh(torch.bmm(torch.transpose(self.v_matrices, 1, 2), f_vectors[:,:,None]) + self.b_vectors)  # Note: check dimensions order for torch.mul are correct??
 
         single_output = torch.tanh(
