@@ -53,7 +53,7 @@ class Train():
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
 
-            assert torch.any(torch.isnan(walkers) is False), 'state configuration is borked'
+            assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
             kinetic = self.kinetic(phi, walkers).detach()
