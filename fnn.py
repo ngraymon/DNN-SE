@@ -49,6 +49,9 @@ class FermiNet(torch.nn.Module):
 
         # single stream inputs:
 
+        if torch.is_tensor(electron_positions):
+            electron_positions = electron_positions.detach()
+
         # alternative solution
         # eN_vectors = np.empty((electron_positions.shape[0], self.nuclei_positions.shape[0], 3))
         # for i, e in enumerate(electron_positions):
@@ -95,8 +98,8 @@ class FermiNet(torch.nn.Module):
     def forward(self, electron_positions=None, walker=None, multi=False):
         """ x """
 
-        # print(electron_positions)
-        # print(self.n)
+        # print(f"{electron_positions = }")
+        # print(f"{self.n = }")
 
         if walker is not None: ################    walker is an alias of electron_positions
             electron_positions = walker ###    walker is an alias of electron_positions
@@ -182,14 +185,14 @@ class FermiLayer(torch.nn.Module):
         single_h, double_h = input_tensor[0].type(torch.FloatTensor), input_tensor[1].type(torch.FloatTensor)
         single_h_up, single_h_down = single_h[:n_up], single_h[n_up:]
         double_h_ups, double_h_downs = double_h[:, :n_up], double_h[:, n_up:]
-       
+
         n = len(input_tensor[0])
 
         single_g_up = torch.mean(single_h_up, 0) if single_h_up.nelement() else torch.empty(0)
         single_g_down = torch.mean(single_h_down, 0) if single_h_down.nelement() else torch.empty(0)
         double_g_ups = torch.mean(double_h_ups, 1) if double_h_ups.nelement() else torch.empty(n, 0)
         double_g_downs = torch.mean(double_h_downs, 1) if double_h_downs.nelement() else torch.empty(n, 0)
-        
+
         f_vectors = torch.stack([
             torch.cat((
                 single_h[i],
@@ -198,7 +201,7 @@ class FermiLayer(torch.nn.Module):
                 double_g_ups[i],
                 double_g_downs[i]
             )) for i in range(n)]).type(torch.FloatTensor)
-        
+
         # single_output = torch.tanh(torch.bmm(torch.transpose(self.v_matrices, 1, 2), f_vectors[:,:,None]) + self.b_vectors)  # Note: check dimensions order for torch.mul are correct??
 
         single_output = torch.tanh(

@@ -12,7 +12,7 @@ Import this module as:
 # third party imports
 import numpy as np
 import torch
-from torch.autograd import grad
+from torch.autograd import grad, backward
 # local imports
 
 
@@ -33,8 +33,24 @@ def kinetic_from_log(f, x):
     The kinetic energy function.
     '''
 
+    n_replicas = int(x.shape[0])
+
+    print(f"{n_replicas = }")
+    print(f"{f = }")
+    print(f"{x = }")
+
     lapl_tensor = []
+
+    # this doesn't work
     df = grad(f, x)
+
+    # this doesn't work
+    df = [grad(f[i, 0], x[i]) for i in range(n_replicas)]
+
+    print(df)
+    print(df[0])
+
+    import pdb; pdb.set_trace()
 
     for i in range(x.shape[1]):
         lapl_elem = grad(torch.unsqueeze(df[..., i], -1), x)[0][..., i]

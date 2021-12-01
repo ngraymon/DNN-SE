@@ -109,6 +109,7 @@ class MonteCarlo():
 
         # how we analyze our mc progress
         self.psi = self.compute_psi()
+
         assert not torch.isnan(self.psi), 'Initial wavefunction is nan'
         self.rolling_accuracy = 0.0
 
@@ -165,7 +166,7 @@ class MonteCarlo():
         ])
 
         print(f"{states.shape = }")
-        return torch.tensor(states)
+        return torch.tensor(states, requires_grad=True)
 
     def metropolis_accept_step(self, acceptance_ratio):
         """ This function evaluates the 'proposed' new_state
@@ -238,8 +239,7 @@ class MonteCarlo():
         self.state = cur_state
         self.psi = cur_psi
         self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
-
-        return cur_state, cur_psi, accuracy
+        return cur_psi, cur_state, accuracy
 
     def print_sorted_ratios(list_of_ratios):
         """ Debug/Profiling tool to investigate the distribution of the acceptace ratios. """
