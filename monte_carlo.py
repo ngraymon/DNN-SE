@@ -177,15 +177,15 @@ class MonteCarlo():
         u = torch.rand(size=self.walkers.shape)
         log.debug(f"{'uniform random number at index 0':<30}{u[0, ...]}")
 
-        # i have to call forward to generate my new phis
+        # i have to call forward to generate my new psi's
         multi = bool(len(self.walkers.shape) >= 3)
-        new_phi = self.compute_psi(self.walkers, multi=multi)
+        new_psi = self.compute_psi(self.walkers, multi=multi)
 
         # test the condition
         accepted = u <= acceptance_ratio
         log.debug(f"{accepted = }")
 
-        return accepted, new_phi
+        return accepted, new_psi
 
     def preform_one_step(self, *args, **kwargs):
         """ Using a standard Metropolis-Hastings algorithm
@@ -213,7 +213,7 @@ class MonteCarlo():
             list_of_ratios.append(acceptance_ratio[0])
 
         # 4 - calculate if we accept or reject for each step
-        accepted_bools, new_phi = self.metropolis_accept_step(acceptance_ratio)
+        accepted_bools, new_psi = self.metropolis_accept_step(acceptance_ratio)
 
         if record_steps:
             list_of_accepts.append(accepted_bools)
