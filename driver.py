@@ -581,14 +581,27 @@ def prepare_network(molecule, nof_electrons, spin_config):
         - `network.zero_grad()`
         - `network.forward(walkers)`, which assumes it takes a `walkers` object that is the return value from a `mcmc.create()` call
     """
-    n_up, n_down = spin_config
+    number_of_up_spin_electrons, number_of_down_spin_electrons = spin_config
 
     # create nuclear positions
-    n_pos = np.array([np.array(atom.coords) for atom in molecule])
-    e_pos = np.zeros_like(n_pos)
-    hidden_units = flags.hidden_units
+    nuclear_positions = torch.zeros((len(molecule), 3))
 
-    return fnn.FermiNet(n_up, e_pos, n_pos, hidden_units, num_determinants=2)
+    # temporarily create numpy array
+    temporary_arr = np.array([np.array(atom.coords) for atom in molecule])
+
+    # stuff that in a pytorch tensor
+    nuclear_positions[:] = torch.tensor(temporary_arr)
+
+    # dummy electron positions for now
+    electron_positions = torch.zeros_like(nuclear_positions)
+
+    return fnn.FermiNet(
+        number_of_up_spin_electrons,
+        electron_positions,
+        nuclear_positions,
+        flags.hidden_units,
+        num_determinants=2
+    )
 
 
 def prepare_hamiltonian(molecule, nof_electrons):
