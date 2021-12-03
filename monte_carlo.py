@@ -103,6 +103,7 @@ class MonteCarlo():
         self.batch_size = batch_size
         # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
         self.walkers = self._initial_random_states()
+        self.net_multi = bool(len(self.walkers.shape) >= 3)
 
         # number of monte carlo steps to preform per epoch/network call
         self.nof_steps = nof_steps
@@ -115,9 +116,10 @@ class MonteCarlo():
 
         return
 
-    def compute_psi(self, *args, **kwargs):
+    def compute_psi(self, visible_nodes, *args, **kwargs):
         """ x """
-        return self.net.forward(self.walkers, *args, **kwargs)
+        kwargs.update({'multi': self.net_multi})
+        return self.net.forward(visible_nodes, *args, **kwargs)
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):
         """
@@ -177,15 +179,11 @@ class MonteCarlo():
         u = torch.rand(size=self.walkers.shape)
         log.debug(f"{'uniform random number at index 0':<30}{u[0, ...]}")
 
-        # i have to call forward to generate my new psi's
-        multi = bool(len(self.walkers.shape) >= 3)
-        new_psi = self.compute_psi(self.walkers, multi=multi)
-
         # test the condition
         accepted = u <= acceptance_ratio
         log.debug(f"{accepted = }")
 
-        return accepted, new_psi
+        return accepted
 
     def preform_one_step(self, *args, **kwargs):
         """ Using a standard Metropolis-Hastings algorithm
@@ -208,12 +206,13 @@ class MonteCarlo():
 
         # 3 - compute acceptance ratio
         acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
+        print(f"{acceptance_ratio.shape = }")
 
         if record_steps:
             list_of_ratios.append(acceptance_ratio[0])
 
         # 4 - calculate if we accept or reject for each step
-        accepted_bools, new_psi = self.metropolis_accept_step(acceptance_ratio)
+        accepted_bools = self.metropolis_accept_step(acceptance_ratio)
 
         if record_steps:
             list_of_accepts.append(accepted_bools)
@@ -236,7 +235,7 @@ class MonteCarlo():
             list_of_psi.append(cur_psi)
 
         # 6 - update relevant objects/parameters
-        self.state = cur_state
+        self.walkers = cur_state
         self.psi = cur_psi
         self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
         return cur_psi, cur_state, accuracy

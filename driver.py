@@ -401,7 +401,7 @@ def prepare_file_paths():
             os.makedirs(flags.result_folder, exist_ok=True)
     except Exception as e:
         print(
-            f"Failed to create results folder at {flags.result_folder}"
+            f"Failed to create results folder at {flags.result_folder}\n"
             "Is there an issue with the OS and/or file system?"
         )
         raise e
@@ -410,7 +410,15 @@ def prepare_file_paths():
 
     result_path = join(flags.result_folder, f'results_{time}')
 
-    os.mkdir(result_path)
+    try:
+        if not isdir(result_path):
+            os.makedirs(result_path, exist_ok=True)
+    except Exception as e:
+        print(
+            f"Failed to create results folder at {flags.result_folder}\n"
+            "Is there an issue with the OS and/or file system?"
+        )
+        raise e
 
     return result_path
 
