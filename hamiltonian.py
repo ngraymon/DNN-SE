@@ -39,25 +39,41 @@ def kinetic_from_log(f, x):
     print(f"{f = }")
     print(f"{x = }")
 
+    test1 = x + 10 + x**2
+
     lapl_tensor = []
-
     # this doesn't work
-    df = grad(f, x)
-
-    # this doesn't work
-    df = [grad(f[i, 0], x[i]) for i in range(n_replicas)]
+    df = grad(test1, x)
 
     print(df)
     print(df[0])
+    print(x.shape[1])
+
+    import pdb; pdb.set_trace()
+
+    # this doesn't work
+    df = grad(f, x, grad_outputs=torch.ones_like(f), allow_unused=True)
+
+    # this doesn't work
+    # df = [grad(f[i, 0], x[i], allow_unused=True) for i in range(n_replicas)]
+
+    print(df)
+    print(df[0])
+    print(x.shape[1])
 
     import pdb; pdb.set_trace()
 
     for i in range(x.shape[1]):
+        pdb.set_trace()
         lapl_elem = grad(torch.unsqueeze(df[..., i], -1), x)[0][..., i]
+        pdb.set_trace()
         lapl_tensor.append(lapl_elem)
+        pdb.set_trace()
 
     lapl_tensor = torch.tensor(lapl_tensor)
     lapl = torch.sum(lapl_tensor) + torch.sum(df**2)
+
+    import pdb; pdb.set_trace()
 
     return -0.5*torch.unsqueeze(lapl, -1)
 

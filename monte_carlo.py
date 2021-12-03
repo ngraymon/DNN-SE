@@ -109,7 +109,16 @@ class MonteCarlo():
         self.nof_steps = nof_steps
 
         # how we analyze our mc progress
-        self.psi = self.compute_psi()
+        print(f"{self.walkers.shape = }")
+        import pdb; pdb.set_trace()
+        self.psi = self.compute_psi(self.walkers)
+
+        if True:  # debug
+            from torch.autograd import grad
+            df = grad(self.psi, self.walkers)
+            print(f"{df = }")
+            assert False
+            import pdb; pdb.set_trace()
 
         assert not torch.isnan(self.psi), 'Initial wavefunction is nan'
         self.rolling_accuracy = 0.0

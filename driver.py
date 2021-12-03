@@ -589,14 +589,14 @@ def prepare_network(molecule, nof_electrons, spin_config):
     # temporarily create numpy array
     temporary_arr = np.array([np.array(atom.coords) for atom in molecule])
 
-    # stuff that in a pytorch tensor
+    # wrap that in a pytorch tensor (necessary for backpropagation of the network)
     nuclear_positions[:] = torch.tensor(temporary_arr)
 
     # dummy electron positions for now
-    electron_positions = torch.zeros_like(nuclear_positions)
+    electron_positions = torch.zeros((sum(spin_config), 3))
 
     return fnn.FermiNet(
-        number_of_up_spin_electrons,
+        spin_config,
         electron_positions,
         nuclear_positions,
         flags.hidden_units,
@@ -705,6 +705,15 @@ def main(molecule, spin_config):
 
     # create the network object
     network_object = prepare_network(molecule, nof_electrons, spin_config)
+
+    fake_walkers = torch.zeros((sum(spin_config), 3))
+    psi = network_object.forward(fake_walkers)
+
+    print(f"{psi.shape = }")
+    df = torch.autograd.grad(psi, fake_walkers)
+    print(f"{df = }")
+    print(f"{df.shape = }")
+    import pdb; pdb.set_trace()
 
     # currently only returns `None`
     scf_object = prepare_scf(molecule, spin_config, pretraining_config, using_scf_flag=False)
