@@ -34,10 +34,12 @@ logging.setLoggerClass(MyLogger)
 log = logging.getLogger(__name__)
 
 logging.basicConfig(
-    format="%(asctime)-13s [%(levelname)s] %(funcName)34s: %(message)s",
+    # format="%(asctime)-10s [%(levelname)s] %(module)10s:%(funcName)30s: %(message)s",
     # format="%(funcName)34s: %(message)s",
+    format="%(asctime)-6s[%(levelname)5s] %(module)10s: %(funcName)35s: %(message)s",
     # datefmt='%m/%d/%Y %I:%M:%S %p',
-    datefmt='%d %I:%M:%S ',
+    # datefmt='%d %I:%M:%S ',
+    datefmt='%I:%M:%S ',
     level=logging.INFO,
     # level=logging.DEBUG,
 )

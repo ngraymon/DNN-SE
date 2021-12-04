@@ -102,21 +102,25 @@ class MonteCarlo():
         # self.walker_shape = (batch_size, len(initial_offset))
         self.batch_size = batch_size
         # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
-        self.walkers = self._initial_random_states()
+
+        number_of_replicas = 1  # how many GPUs we are using
+
+        shape = (number_of_replicas, batch_size)
+        self.walkers = self._initial_random_states(shape)
         self.net_multi = bool(len(self.walkers.shape) >= 3)
 
         # number of monte carlo steps to preform per epoch/network call
         self.nof_steps = nof_steps
 
         # how we analyze our mc progress
-        print(f"{self.walkers.shape = }")
+        log.debug(f"{self.walkers.shape = }")
         import pdb; pdb.set_trace()
         self.psi = self.compute_psi(self.walkers)
 
         if True:  # debug
             from torch.autograd import grad
             df = grad(self.psi, self.walkers)
-            print(f"{df = }")
+            log.debug(f"{df = }")
             assert False
             import pdb; pdb.set_trace()
 
@@ -162,21 +166,22 @@ class MonteCarlo():
 
         return new_state
 
-    def _initial_random_states(self):
+    def _initial_random_states(self, shape):
         """ Compute initial walker points.
 
         Return `self.walker_shape` samples from the normal distribution
         specified by the `_init_offset` and `_init_stddev`
         """
 
-        print(f"{self._init_offset.shape = }")
-        print(f"{self._init_stddev = }")
+        log.debug(f"{self._init_offset.shape = }")
+        log.debug(f"{self._init_stddev = }")
+
         states = np.array([
             rng.normal(loc=self._init_offset, scale=self._init_stddev,)
             for b in range(self.batch_size)
         ])
 
-        print(f"{states.shape = }")
+        log.debug(f"{states.shape = }")
         return torch.tensor(states, requires_grad=True)
 
     def metropolis_accept_step(self, acceptance_ratio):
@@ -210,12 +215,13 @@ class MonteCarlo():
 
         # 2 - draw a new step and wavefunction
         new_state = self.propose_new_state()
+        # here ferminet seems to take the zeroth element of the array
         new_psi = self.compute_psi(new_state)
         assert not torch.isnan(new_psi), 'New psi is nan'
 
         # 3 - compute acceptance ratio
         acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
-        print(f"{acceptance_ratio.shape = }")
+        log.debug(f"{acceptance_ratio.shape = }")
 
         if record_steps:
             list_of_ratios.append(acceptance_ratio[0])

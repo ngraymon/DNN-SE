@@ -24,7 +24,7 @@ import torch
 
 # local imports
 from flags import flags
-from log_conf import log
+from log_conf import log, setLevelDebug, setLevelInfo
 import kfac
 import hamiltonian
 import system
@@ -33,6 +33,9 @@ import elements
 from train import Train
 from monte_carlo import MonteCarlo
 # import quantum_mechanics as QM
+
+
+tab = " "*4  # define tab as 4 spaces
 
 
 # -------------------------- spin assignment functions ---------------------- #
@@ -227,9 +230,9 @@ def generate_electron_position_vector(molecule, electron_spec):
     # calculate the total charge
     total_charge = sum(nuclei) - (nof_up_spin_electrons + nof_down_spin_electrons)
 
-    log.info(f"Total charge of the molecule/system: {total_charge}")
-    log.info(f"{nof_up_spin_electrons = }")
-    log.info(f"{nof_down_spin_electrons = }")
+    log.debug(f"Total charge of the molecule/system: {total_charge}")
+    log.debug(f"{nof_up_spin_electrons = }")
+    log.debug(f"{nof_down_spin_electrons = }")
 
     # Construct a dummy iso-electronic neutral system.
     temp_atom_list = [copy.copy(atom) for atom in molecule]
@@ -237,7 +240,7 @@ def generate_electron_position_vector(molecule, electron_spec):
     # log.(f"{temp_atom_list = }")
 
     if total_charge == 0:
-        log.info('System is already neutral')
+        log.debug('System is already neutral')
     elif total_charge != 0:
         log.warning(
             'System has non-zero polarity.'
@@ -334,7 +337,7 @@ def generate_electron_position_vector(molecule, electron_spec):
 
     # If the polarity is still not the correct magnitude then we need to use heuristics
     if assigned_spin_polarity != absolute_spin_polarity:
-        log.info(
+        log.debug(
             'Spin polarization does not match isolated atoms. '
             'Using heuristics to set initial electron positions.'
         )
@@ -351,7 +354,7 @@ def generate_electron_position_vector(molecule, electron_spec):
     # log the final assignment
     iterator = zip(molecule, spin_config_list)
     lst = [f"{atom.symbol}: {spin_config}" for atom, spin_config in iterator]
-    log.info(f"Electrons assigned {', '.join(lst)}.")
+    log.debug(f"\nElectrons assigned:\n{tab}{', '.join(lst)}.")
 
     # NOTE for future me: original code seemed to be designed for handling lists of lists
     proposed_electron_spec = total_spin_assignment(spin_config_list)
@@ -371,19 +374,22 @@ def generate_electron_position_vector(molecule, electron_spec):
     if any(0 > min(spin_config) for spin_config in zip(*spin_config_list)):
         raise RuntimeError('Assigned negative number of electrons!')
 
-    print(spin_config_list)
-    spin_config_list[0]
-
     up_spin_list = [np.tile(atom.coords, e[0]) for atom, e in zip(temp_atom_list, spin_config_list)]
-    print(f"{up_spin_list = }")
     down_spin_list = [np.tile(atom.coords, e[1]) for atom, e in zip(temp_atom_list, spin_config_list)]
-    print(f"{down_spin_list = }")
+
+    up_spin_string = f"\n{tab}".join([repr(spin) for spin in up_spin_list])
+    down_spin_string = f"\n{tab}".join([repr(spin) for spin in down_spin_list])
+    log.debug(f"\nup_spin_list:\n{tab}{up_spin_string}")
+    log.debug(f"\ndown_spin_list:\n{tab}{down_spin_string}")
 
     both_spins_list = np.concatenate(up_spin_list + down_spin_list)
-    print("walker tensor:")
-    for i in range(len(both_spins_list) // 3):
-        x_y_z = both_spins_list[i*3:(i+1)*3]
-        print(f"   electron {i+1} : {x_y_z}")
+
+    walker_string = f"\n{tab}".join([
+        f"electron {i+1} : {both_spins_list[i*3:(i+1)*3]}"
+        for i in range(len(both_spins_list) // 3)
+    ])
+
+    log.debug(f"\nwalker tensor:\n{tab}{walker_string}")
 
     # glue the two lists together
     electron_positions = np.concatenate(up_spin_list + down_spin_list)
@@ -693,6 +699,7 @@ def main(molecule, spin_config):
     optimizaiton_config = prepare_optimizer_configuration(args)
     kfac_config = prepare_kfac_configuration(args)
     mcmc_config = prepare_mcmc_configuration()
+    log.debug("Finished preparing the config parameters")
 
     # some other keyword arguments?
     kwargs = {}
@@ -705,11 +712,13 @@ def main(molecule, spin_config):
 
     # create the network object
     network_object = prepare_network(molecule, nof_electrons, spin_config)
+    log.debug("Finished initializing the Network object")
 
-    fake_walkers = torch.zeros((sum(spin_config), 3))
+    fake_walkers = torch.zeros((sum(spin_config), 3), requires_grad=True)
     psi = network_object.forward(fake_walkers)
 
-    print(f"{psi.shape = }")
+    print(f"{psi.shape = }\n{psi = }")
+    print(f"{fake_walkers.shape = }\n{fake_walkers = }")
     df = torch.autograd.grad(psi, fake_walkers)
     print(f"{df = }")
     print(f"{df.shape = }")
@@ -717,15 +726,18 @@ def main(molecule, spin_config):
 
     # currently only returns `None`
     scf_object = prepare_scf(molecule, spin_config, pretraining_config, using_scf_flag=False)
+    log.debug("Finished initializing the SCF object")
 
     # create the Hamiltonian operators
     hamiltonian_operators = prepare_hamiltonian(molecule, nof_electrons)
+    log.debug("Finished initializing the Hamiltonian operators")
 
     # create initial means/offsets to define the sampling's normal distribution
     init_means = prepare_mean_array(mcmc_config, molecule, spin_config)
 
     # create the Monte Carlo object
     mcmc_object = prepare_mcmc(mcmc_config, network_object, init_means, precision)
+    log.debug("Finished initializing the MCMC object")
 
     # we might do this in the future
     # (i believe this part of the code was to generate HF data to compare to)
@@ -734,13 +746,16 @@ def main(molecule, spin_config):
         hf_object = prepare_mcmc(mcmc_config, scf_object, init_means, precision)
     else:
         hf_object = None
+    log.debug("Finished initializing the HF object")
 
     # create the trainer object
     trainer_object = prepare_trainer(
         network_object, mcmc_object, hamiltonian_operators, hf_object
     )
+    log.debug("Finished initializing the trainer object")
 
     # what we've all been waiting for, the ACTUAL training!
+    log.debug("Attempting to start the training")
     trainer_object.train(
         # network_configuration,
         # optimizaiton_configuration,
@@ -748,11 +763,14 @@ def main(molecule, spin_config):
         # mcmc_configuration,
         **kwargs
     )
+    log.debug("Training completed")
 
     print("Success!")
 
 
 if __name__ == '__main__':
+
+    setLevelDebug()
 
     # use input to specify system for debugging purposes
     name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'

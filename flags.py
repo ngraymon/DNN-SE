@@ -144,12 +144,16 @@ flags.xs = None
 
 # flags for the network architecture
 
-flags.network_architecture = 'ferminet'  # we will be running ferminet exclusively I believe but here
-                                         # is where different networks would be chosen
-flags.hidden_units = [[32, 4],  [32, 4],  [32, 4],  [32, 4]]    # The number of hidden units in each layer of the network
-                                                             # For Ferminet, the first number in each tuple is the number
-                                                             # units in the 1-electron stream and the second number is
-                                                             # the units in the 2 electron stream
+# we will be running ferminet exclusively I believe but here is where different networks would be chosen
+flags.network_architecture = 'ferminet'
+
+""" The number of hidden units in each layer of the network
+For Ferminet, the first number in each tuple is the number
+units in the 1-electron stream and the second number is
+the units in the 2 electron stream
+"""
+flags.hidden_units = [[32, 4],  [32, 4],  [32, 4],  [32, 4]]
+
 flags.determinants = 16  # number of determinents in the ferminet
 flags.r12_distance_between_particle = True  # include r12/distance features between electrons and nuclei
 flags.r12_distance_between_electrons = True  # same as above but between electron pairs
