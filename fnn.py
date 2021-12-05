@@ -118,7 +118,7 @@ class FermiNet(torch.nn.Module):
         log.debug(f"{electron_positions.shape = }")
         log.debug(f"{self.nuclei_positions.shape = }")
 
-        self.eN_vectors[:] = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(self.nuclei_positions, 0)
+        self.eN_vectors = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(self.nuclei_positions, 0)
         log.debug(f"{self.eN_vectors.shape = }")
 
         """ if we have (10, 5, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
@@ -161,7 +161,7 @@ class FermiNet(torch.nn.Module):
         so for methane with 10 electrons you get
             (10, 10, 3) = (10, 1, 3) - (1, 10, 3)
         """
-        self.ee_vectors[:] = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(electron_positions, 0)
+        self.ee_vectors = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(electron_positions, 0)
         log.debug(f"{self.ee_vectors.shape = }")
 
         """ if we have (10, 10, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
@@ -564,7 +564,8 @@ class FermiLayer(torch.nn.Module):
 
         # output[0] = np.tanh(torch.tensor([(self.v_matrices[i] @ f_vectors[i]) + self.b_vectors[i] for i in range(len(f_vectors))]))
         if single_stream_output.size() == single_h.size():
-            single_stream_output += single_h
+            # single_stream_output += single_h
+            single_stream_output = single_stream_output + single_h
 
         return single_stream_output
 
@@ -595,12 +596,12 @@ class FermiLayer(torch.nn.Module):
                     dim=3
                 ) + self.c_vectors
             )
-            log.debug(f"{double_stream_output.shape = }")
 
         # output[1] = np.tanh(torch.tensor([[(self.w_matrices[i][j] @ double_h[i][j]) + self.c_vectors[i][j] for j in range(len(double_h[0]))] for i in range(len(double_h))]))
 
         if double_stream_output.size() == double_h.size():
-            double_stream_output += double_h
+            # double_stream_output += double_h
+            double_stream_output = double_stream_output + double_h
 
         return double_stream_output
 
