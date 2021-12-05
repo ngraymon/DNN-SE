@@ -49,7 +49,7 @@ class FermiNet(torch.nn.Module):
         self.layer_dimensions[-1][-1] = 0
 
         print(f"{self.layer_dimensions = }")
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         self._initialize_network_layers(spin_config, self.layer_dimensions)
 
@@ -134,7 +134,7 @@ class FermiNet(torch.nn.Module):
         """
 
         # concatenate (10, 5, 3) with (10, 5, 1) to get (10, 5, 4)
-        single_stream = torch.concat((self.eN_vectors, norm_eN_vectors), dim=2)
+        single_stream = torch.cat((self.eN_vectors, norm_eN_vectors), dim=2)
         log.debug(f"{single_stream.shape = }")
 
         if False:
@@ -171,7 +171,7 @@ class FermiNet(torch.nn.Module):
         norm_ee_vectors = torch.linalg.vector_norm(self.ee_vectors, dim=2, keepdim=True)
 
         # concatenate (10, 10, 3) with (10, 10, 1) to get (10, 10, 4)
-        double_stream = torch.concat((self.ee_vectors, norm_ee_vectors), dim=2)
+        double_stream = torch.cat((self.ee_vectors, norm_ee_vectors), dim=2)
         log.debug(f"{double_stream.shape = }")
 
         if False:
@@ -186,17 +186,16 @@ class FermiNet(torch.nn.Module):
         """ Prepare the visible layers from the single and double steam h tensors """
         log.debug("Creating the single and double streams from the electron positions\n")
 
-        if torch.is_tensor(electron_positions):
-            electron_positions = electron_positions.detach()
-
         log.debug((type(self.nuclei_positions), self.nuclei_positions.shape))
         log.debug((type(electron_positions), electron_positions.shape))
 
         # single_h_vecs_vector
         single_h_stream = self._preprocess_single_stream(electron_positions)
+        log.debug(f"{single_h_stream = }")
 
         # double_h_vecs_matrix
         double_h_stream = self._preprocess_double_stream(electron_positions)
+        log.debug(f"{double_h_stream = }")
 
         # debug
         log.debug(f"{single_h_stream.shape = }")
@@ -277,7 +276,7 @@ class FermiNet(torch.nn.Module):
         """ x """
 
         log.debug(type(electron_positions))
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         if electron_positions is not None:
             self.preprocess(electron_positions)
@@ -291,7 +290,7 @@ class FermiNet(torch.nn.Module):
         # [(10, 5, 4), (10, 10, 4)]
         layer_outputs = [self.visible_layers]
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         for layer in self.layers[:-1]:
             layer_outputs.append(layer.layer_forward(layer_outputs[-1]))
@@ -493,7 +492,7 @@ class FermiLayer(torch.nn.Module):
         but `single_g_down` had dimensionality (1, 20)
         we have to repeat its values
         """
-        f_vectors = torch.concat((
+        f_vectors = torch.cat((
             single_h,
             torch.tile(single_g_up, dims),
             torch.tile(single_g_down, dims),
