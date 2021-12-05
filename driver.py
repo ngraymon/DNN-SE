@@ -721,7 +721,7 @@ def main(molecule, spin_config):
     print(f"{fake_walkers.shape = }\n{fake_walkers = }")
     # with torch.autograd.detect_anomaly():
     #     df = torch.autograd.grad(psi, fake_walkers)
-    df = torch.autograd.grad(psi, fake_walkers)
+    df, = torch.autograd.grad(psi, fake_walkers)
     print(f"{df = }")
     print(f"{df.shape = }")
     import pdb; pdb.set_trace()
