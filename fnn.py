@@ -279,7 +279,8 @@ class FermiNet(torch.nn.Module):
         # import pdb; pdb.set_trace()
 
         if electron_positions is not None:
-            self.preprocess(electron_positions)
+            if not multi:
+                self.preprocess(electron_positions)
 
         # if multi is True, then the network forwards a list of walkers and returns a list of outputs
         # this should just be replaced with broadcasting?!
@@ -487,6 +488,8 @@ class FermiLayer(torch.nn.Module):
         given `self.n` = 10
         """
         dims = (self.n, 1)
+        # dims = (self.n, 1)
+        dims = (n, 1)
 
         """ Since `single_h` will have dimensionality (10, 20)
         but `single_g_down` had dimensionality (1, 20)

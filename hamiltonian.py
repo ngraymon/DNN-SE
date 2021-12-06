@@ -43,7 +43,7 @@ def kinetic_from_log(f, x):
 
     lapl_tensor = []
     # this doesn't work
-    df = grad(test1, x)
+    df = grad(test1, x, grad_outputs=torch.ones_like(test1))
 
     print(df)
     print(df[0])
