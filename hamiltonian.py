@@ -9,11 +9,14 @@ Import this module as:
 '''
 
 # system imports
+
 # third party imports
 import numpy as np
 import torch
 from torch.autograd import grad, backward
+
 # local imports
+from log_conf import log
 
 
 def kinetic_from_log(f, x):
@@ -35,45 +38,51 @@ def kinetic_from_log(f, x):
 
     n_replicas = int(x.shape[0])
 
-    print(f"{n_replicas = }")
-    print(f"{f = }")
-    print(f"{x = }")
+    log.debug(f"{n_replicas = }")
+    # log.debug(f"{f = }")
+    # log.debug(f"{x = }")
 
     test1 = x + 10 + x**2
 
     lapl_tensor = []
-    # this doesn't work
-    df = grad(test1, x, grad_outputs=torch.ones_like(test1))
+    #
+    df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
 
-    print(df)
-    print(df[0])
-    print(x.shape[1])
-
-    import pdb; pdb.set_trace()
-
-    # this doesn't work
-    df = grad(f, x, grad_outputs=torch.ones_like(f), allow_unused=True)
-
-    # this doesn't work
-    # df = [grad(f[i, 0], x[i], allow_unused=True) for i in range(n_replicas)]
-
-    print(df)
-    print(df[0])
-    print(x.shape[1])
+    # log.debug(f"{df = }")
+    log.debug(f"{df.shape = }")
+    log.debug(f"{x.shape = }")
 
     import pdb; pdb.set_trace()
 
+    # loop over each psi_i
+    # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
+    #
     for i in range(x.shape[1]):
-        pdb.set_trace()
-        lapl_elem = grad(torch.unsqueeze(df[..., i], -1), x)[0][..., i]
-        pdb.set_trace()
+
+        # log.debug(f"{x.shape = }")
+        # log.debug(f"{df[..., i].shape = }")
+        # log.debug(f"{x = }")
+        # log.debug(f"{df[..., i] = }")
+        # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
+        # import pdb; pdb.set_trace()
+
+        input_df = torch.unsqueeze(df[..., i], -1)
+        df2, = grad(
+            input_df,
+            x,
+            # retain_graph=True,
+            # grad_outputs=torch.ones_like(input_df)
+        )
+        # log.debug(f"{df2.shape = }")
+
+        lapl_elem = df2[..., i]
+        log.debug(f"{lapl_elem.shape = }")
         lapl_tensor.append(lapl_elem)
-        pdb.set_trace()
 
-    lapl_tensor = torch.tensor(lapl_tensor)
-    lapl = torch.sum(lapl_tensor) + torch.sum(df**2)
-
+    log.debug(f"{lapl_tensor = }")
     import pdb; pdb.set_trace()
+    lapl_tensor = torch.tensor(lapl_tensor)
+    lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
 
     return -0.5*torch.unsqueeze(lapl, -1)
 

@@ -114,15 +114,8 @@ class MonteCarlo():
 
         # how we analyze our mc progress
         log.debug(f"{self.walkers.shape = }")
-        import pdb; pdb.set_trace()
         self.psi = self.compute_psi(self.walkers)
-
-        if True:  # debug
-            from torch.autograd import grad
-            df = grad(self.psi, self.walkers)
-            log.debug(f"{df = }")
-            assert False
-            import pdb; pdb.set_trace()
+        log.debug(f"{self.psi.shape = }")
 
         assert not torch.isnan(self.psi), 'Initial wavefunction is nan'
         self.rolling_accuracy = 0.0
@@ -213,6 +206,10 @@ class MonteCarlo():
         cur_psi = self.psi
         accuracy = self.rolling_accuracy
 
+        # OKAY! so for sure I can do the following and it works!
+        # BUT it looks like new_state is not part of the network!?!?
+        # df = torch.autograd.grad(self.psi, self.walkers)
+
         # 2 - draw a new step and wavefunction
         new_state = self.propose_new_state()
         # here ferminet seems to take the zeroth element of the array
@@ -250,10 +247,19 @@ class MonteCarlo():
             list_of_psi.append(cur_psi)
 
         # 6 - update relevant objects/parameters
-        self.walkers = cur_state
-        self.psi = cur_psi
+        self.walkers.data = cur_state
+        self.psi.data = cur_psi
         self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
-        return cur_psi, cur_state, accuracy
+
+        # df = grad(self.psi, self.walkers, allow_unused=True)
+        # df = torch.autograd.grad(self.psi, self.walkers, grad_outputs=torch.ones_like(self.psi))
+
+        # log.debug(f"{df = }")
+        # log.debug(f"{df.shape = }")
+        log.debug(f"{self.walkers.shape = }")
+        log.debug(f"{self.psi.shape = }")
+
+        return self.psi, self.walkers, accuracy
 
     def print_sorted_ratios(list_of_ratios):
         """ Debug/Profiling tool to investigate the distribution of the acceptace ratios. """

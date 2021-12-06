@@ -714,18 +714,6 @@ def main(molecule, spin_config):
     network_object = prepare_network(molecule, nof_electrons, spin_config)
     log.debug("Finished initializing the Network object")
 
-    fake_walkers = torch.randn((sum(spin_config), 3), requires_grad=True)
-    psi = network_object.forward(fake_walkers)
-
-    print(f"{psi.shape = }\n{psi = }")
-    print(f"{fake_walkers.shape = }\n{fake_walkers = }")
-    # with torch.autograd.detect_anomaly():
-    #     df = torch.autograd.grad(psi, fake_walkers)
-    df, = torch.autograd.grad(psi, fake_walkers)
-    print(f"{df = }")
-    print(f"{df.shape = }")
-    import pdb; pdb.set_trace()
-
     # currently only returns `None`
     scf_object = prepare_scf(molecule, spin_config, pretraining_config, using_scf_flag=False)
     log.debug("Finished initializing the SCF object")
