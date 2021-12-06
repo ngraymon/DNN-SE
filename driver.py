@@ -790,7 +790,7 @@ if __name__ == '__main__':
         molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
 
     else:
-        raise Exception('Not supported yet')
+        raise Exception(f"{sys.argv[1]} is not a supported system yet")
 
     print("The system input is as follows:")
     for i, m in enumerate(molecule):
