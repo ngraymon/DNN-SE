@@ -19,7 +19,7 @@ from torch.autograd import grad, backward
 from log_conf import log
 
 
-def kinetic_from_log(f, x):
+def kinetic_from_log(f,NN ,x):
     '''
     Computes the kinetic energy from the log of |psi|,
     the -1/2 \nabla^2 \\psi / \\psi.
@@ -73,40 +73,41 @@ def kinetic_from_log(f, x):
     # loop over each psi_i
     # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
     #
-    for i in range(x.shape[1]):
+    # for i in range(x.shape[1]):
 
-        # log.debug(f"{x.shape = }")
-        # log.debug(f"{df[..., i].shape = }")
-        # log.debug(f"{x = }")
-        # log.debug(f"{df[..., i] = }")
-        # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
-        # import pdb; pdb.set_trace()
+    #     # log.debug(f"{x.shape = }")
+    #     # log.debug(f"{df[..., i].shape = }")
+    #     # log.debug(f"{x = }")
+    #     # log.debug(f"{df[..., i] = }")
+    #     # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
+    #     # import pdb; pdb.set_trace()
 
-        # detached = df.detach()
-        input_df = torch.unsqueeze(df[..., i], -1)
-        log.debug(f"\n{input_df = }")
-        log.debug(f"\n{x = }")
-        import pdb; pdb.set_trace()
-        df2, = grad(
-            input_df,
-            x,
-            # allow_unused=True,
-            # create_graph=True,
-            retain_graph=True,
-            grad_outputs=torch.ones_like(input_df)
-        )
-        log.debug(f"\n{df2 = }")
-        # log.debug(f"{ = }")
-        # assert (2 == df2).all()
-        log.debug(f"{df2.shape = }")
+    #     # detached = df.detach()
+    #     input_df = torch.unsqueeze(df[..., i], -1)
+    #     log.debug(f"\n{input_df = }")
+    #     log.debug(f"\n{x = }")
+    #     import pdb; pdb.set_trace()
+    #     df2 = grad(
+    #         input_df,
+    #         x,
+    #         # allow_unused=True,
+    #         # create_graph=True,
+    #         retain_graph=True,
+    #         grad_outputs=torch.ones_like(input_df)
+    #     )
+    #     log.debug(f"\n{df2 = }")
+    #     # log.debug(f"{ = }")
+    #     # assert (2 == df2).all()
+    #     log.debug(f"{df2.shape = }")
 
-        lapl_elem = df2[..., i]
-        log.debug(f"{lapl_elem.shape = }")
-        lapl_tensor.append(lapl_elem)
+    #     lapl_elem = df2[..., i]
+    #     log.debug(f"{lapl_elem.shape = }")
+    #     lapl_tensor.append(lapl_elem)
 
-    log.debug(f"{lapl_tensor = }")
-    import pdb; pdb.set_trace()
-    lapl_tensor = torch.tensor(lapl_tensor)
+    # log.debug(f"{lapl_tensor = }")
+    # import pdb; pdb.set_trace()
+    # lapl_tensor = torch.tensor(lapl_tensor)
+    lapl_tensor=torch.diagonal(torch.autograd.functional.hessian(NN.forward(),x))
     lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
 
     return -0.5*torch.unsqueeze(lapl, -1)

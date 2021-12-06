@@ -52,7 +52,7 @@ class Train():
             # get wavefunction for each one of these configuration, creates the configurations for each electron
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
-
+            phi_safe=torch.tensor(phi) #make sure the grad of phi is not changed in 
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
@@ -71,12 +71,12 @@ class Train():
                     median - self.clip_el*diff,
                     median + self.clip_el*diff
                 )
-                computedloss = torch.mean((local_energy-loss)*phi)
+                computedloss = torch.mean((local_energy-loss)*phi_safe)
 
             else:
                 # here is the loss being passed into the backward pass since we have an explicit
                 # expression for the gradient of the loss
-                computedloss = torch.mean((local_energy-loss)*phi)
+                computedloss = torch.mean((local_energy-loss)*phi_safe)
 
             # compute the gradient w.r.t. the weights and update with ADAM
             computedloss.backward()
