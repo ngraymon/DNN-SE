@@ -52,34 +52,45 @@ class Train():
             # get wavefunction for each one of these configuration, creates the configurations for each electron
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
-            phi_safe=torch.tensor(phi) #make sure the grad of phi is not changed in 
+
+            copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
+
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
-            kinetic = self.kinetic(phi, walkers).detach()
+            kinetic = self.kinetic(phi, walkers, self.net).detach()
             potential = self.potential(walkers).detach()
             local_energy = kinetic + potential
 
             # this is the "real" loss of the system, i.e the mean of the loss for that batch size
             loss = torch.mean(local_energy)
 
-            if self.clip_el is not None:
+            # default for now
+            if self.clip_el is None:
+                # here is the loss being passed into the backward pass since we have an explicit
+                # expression for the gradient of the loss
+                computed_loss = torch.mean((local_energy - loss) * copy_of_phi)
+
+            else:
+
+                #
                 median = torch.median(local_energy)
-                diff = torch.mean(torch.abs(local_energy-median))
-                clipedlocal = torch.clip(
+
+                #
+                diff = torch.mean(torch.abs(local_energy - median))
+
+                #
+                cliped_local = torch.clip(
                     local_energy,
                     median - self.clip_el*diff,
                     median + self.clip_el*diff
                 )
-                computedloss = torch.mean((local_energy-loss)*phi_safe)
 
-            else:
-                # here is the loss being passed into the backward pass since we have an explicit
-                # expression for the gradient of the loss
-                computedloss = torch.mean((local_energy-loss)*phi_safe)
+                #
+                computed_loss = torch.mean((cliped_local - loss) * copy_of_phi)
 
             # compute the gradient w.r.t. the weights and update with ADAM
-            computedloss.backward()
+            computed_loss.backward()
             Optimizer.step()
             losstot.append(loss)
             # phi_phisgn.append()
