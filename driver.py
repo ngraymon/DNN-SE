@@ -32,6 +32,7 @@ import fnn
 import elements
 from train import Train
 from monte_carlo import MonteCarlo
+# import plot_helium
 # import quantum_mechanics as QM
 
 
@@ -746,7 +747,7 @@ def main(molecule, spin_config):
 
     # what we've all been waiting for, the ACTUAL training!
     log.debug("Attempting to start the training")
-    trainer_object.train(
+    loss_storage = trainer_object.train(
         # network_configuration,
         # optimizaiton_configuration,
         # kfac_configuration,
@@ -754,6 +755,12 @@ def main(molecule, spin_config):
         **kwargs
     )
     log.debug("Training completed")
+
+    # plot the training progress
+    # plotting.plot_training_metrics(loss_storage, name)
+
+    # put the plotting here
+    # plotting.plot_helium(network_object, name)
 
     print("Success!")
 
@@ -774,7 +781,7 @@ if __name__ == '__main__':
     elif name == "chain":
         molecule, spins = system.hydrogen_chains(n=number, width=0.5)
 
-    # for testing dimensonality of the walker tensor
+    # for testing dimensionality of the walker tensor
     elif name == "methane":
         molecule, spins = system.methane()
 

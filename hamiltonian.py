@@ -42,17 +42,33 @@ def kinetic_from_log(f, x):
     # log.debug(f"{f = }")
     # log.debug(f"{x = }")
 
-    test1 = x + 10 + x**2
-
     lapl_tensor = []
-    #
-    df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
+    import pdb; pdb.set_trace()
 
-    # log.debug(f"{df = }")
+    # do the fake x^2 thing
+    if True:
+        y = x**2
+        df, = grad(y, x, create_graph=True, grad_outputs=torch.ones_like(f))
+    # what we actually want to do
+    else:
+        df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
+
+    # # assert (df == x*2).all(), 'not the same'
+
+    log.debug(f"\n{f = }")
+    log.debug(f"\n{df = }")
+    log.debug(f"\n{2*x = }")
+    # log.debug(f"\n{df[..., 0] = }")
+    # log.debug(f"\n{x = }")
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
     import pdb; pdb.set_trace()
+
+    # log.debug(f"\n{df = }")
+    # df[0] = df[1]
+    # log.debug(f"\n{df = }")
+    # import pdb; pdb.set_trace()
 
     # loop over each psi_i
     # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
@@ -66,14 +82,23 @@ def kinetic_from_log(f, x):
         # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
         # import pdb; pdb.set_trace()
 
+        # detached = df.detach()
         input_df = torch.unsqueeze(df[..., i], -1)
+        log.debug(f"\n{input_df = }")
+        log.debug(f"\n{x = }")
+        import pdb; pdb.set_trace()
         df2, = grad(
             input_df,
             x,
-            # retain_graph=True,
-            # grad_outputs=torch.ones_like(input_df)
+            # allow_unused=True,
+            # create_graph=True,
+            retain_graph=True,
+            grad_outputs=torch.ones_like(input_df)
         )
-        # log.debug(f"{df2.shape = }")
+        log.debug(f"\n{df2 = }")
+        # log.debug(f"{ = }")
+        # assert (2 == df2).all()
+        log.debug(f"{df2.shape = }")
 
         lapl_elem = df2[..., i]
         log.debug(f"{lapl_elem.shape = }")
