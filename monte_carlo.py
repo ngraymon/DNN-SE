@@ -113,10 +113,12 @@ class MonteCarlo():
         # how we analyze our mc progress
         self.psi = self.compute_psi(self.walkers)
         log.debug(f"{self.walkers.shape = }")
-        log.debug(f"{self.psi.shape = }")
+        log.debug(f"{self.psi[0].shape = }")
         log.debug(f"{self.psi = }")
 
-        assert not torch.isnan(self.psi).any(), f"Initial wavefunction contains nan's:\n{self.psi = }"
+        for psi_i in self.psi:
+            assert not torch.isnan(psi_i).any(), f"Initial wavefunction contains nan's:\n{self.psi = }"
+
         self.rolling_accuracy = 0.0
 
         return
@@ -124,9 +126,19 @@ class MonteCarlo():
     def compute_psi(self, visible_nodes, *args, **kwargs):
         """ x """
         # torch.autograd.set_detect_anomaly(True)
-        ret = self.net.forward(visible_nodes, *args, **kwargs)
-        assert ret.requires_grad is True
-        # log.debug(f"{ret = }\n{ret.shape = }")
+        ret, fn = self.net.forward(visible_nodes, *args, **kwargs)
+
+        # log.debug(f"{ret.grad_fn = }")
+        log.debug(f"{ret[0].grad_fn = }")
+        import pdb; pdb.set_trace()
+        # ret[0].requires_grad = True
+        # ret.requires_grad = True
+
+        log.debug(f"{ret[0].grad_fn = }")
+        log.debug(f"{ret[0].requires_grad = }")
+
+        # assert ret.requires_grad is True
+        import pdb; pdb.set_trace()
         return ret
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):
@@ -218,10 +230,17 @@ class MonteCarlo():
         new_state = self.propose_new_state()
         # here ferminet seems to take the zeroth element of the array
         new_psi = self.compute_psi(new_state)
-        assert not torch.isnan(new_psi).any(), f"New wavefunction contains nan's:\n{new_psi = }"
+
+        for psi_i in new_psi:
+            assert not torch.isnan(psi_i).any(), f"Initial wavefunction contains nan's:\n{psi_i = }"
 
         # 3 - compute acceptance ratio
-        acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
+        acceptance_ratio = torch.zeros(len(cur_psi))
+        print(len(new_psi))
+        print(len(cur_psi))
+        import pdb; pdb.set_trace()
+        for i in range(len(cur_psi)):
+            acceptance_ratio[i] = torch.squeeze(2 * (new_psi[i] - cur_psi[i]))
         log.debug(f"{acceptance_ratio.shape = }")
 
         if record_steps:
@@ -242,8 +261,12 @@ class MonteCarlo():
 
         The same process is followed for `cur_psi` and `new_psi`.
         """
-        cur_state = torch.where(accepted_bools[:, None, None], new_state, cur_state)
-        cur_psi = torch.where(accepted_bools, new_psi, cur_psi)
+        # print(cur_state)
+        # cur_state = torch.where(accepted_bools[:, None, None], new_state, cur_state)
+
+        for i in range(len(cur_psi)):
+            cur_state[i] = torch.where(accepted_bools[i], new_state[i], cur_state[i])
+            cur_psi[i] = torch.where(accepted_bools[i], new_psi[i], cur_psi[i])
 
         # if we are storing our progress for analysis
         if record_steps:
@@ -256,7 +279,7 @@ class MonteCarlo():
         self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
 
         # df = grad(self.psi, self.walkers, allow_unused=True)
-        # df = torch.autograd.grad(self.psi, self.walkers, grad_outputs=torch.ones_like(self.psi))
+        # df, = torch.autograd.grad(self.psi, self.walkers, retain_graph=True, grad_outputs=torch.ones_like(self.psi))
 
         # log.debug(f"{df = }")
         # log.debug(f"{df.shape = }")

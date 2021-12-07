@@ -50,10 +50,11 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     # do the fake x^2 thing
     if fake_x_2:
         y = x**2
-        df, = grad(y, x, create_graph=True, grad_outputs=torch.ones_like(f))
+        df, = grad(y, x, create_graph=True, retain_graph=True, grad_outputs=torch.ones_like(f))
     # what we actually want to do
     else:
-        df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
+        df, = grad(f, x, retain_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
+        # f.requires_grad = True
         # df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
 
     # # assert (df == x*2).all(), 'not the same'
@@ -78,7 +79,7 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
         # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
         for i in range(x.shape[-1]):
 
-            # log.debug(f"{x.shape = }")
+            log.debug(f"{x.shape = }")
             # log.debug(f"{df[..., i].shape = }")
             # log.debug(f"{x = }")
             # log.debug(f"{df[..., i] = }")
@@ -88,10 +89,9 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
             input_df = torch.unsqueeze(df[..., i], -1)
 
             df2, = grad(
-                input_df,
-                x,
+                input_df, x,
                 # allow_unused=True,
-                create_graph=True,
+                # create_graph=True,
                 retain_graph=True,
                 grad_outputs=torch.ones_like(input_df)
             )
@@ -107,7 +107,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
         log.debug(f"{lapl_tensor[0].shape = }")
         # import pdb; pdb.set_trace()
         lapl_tensor = torch.stack(lapl_tensor)
-        log.debug(f"a")
 
     # an attempt at using hessian
     elif using_hessian:
@@ -132,12 +131,11 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
                 log.debug(f"{lapl_tensor = }")
                 # import pdb; pdb.set_trace()
 
-
-    # log.debug(f"{lapl_tensor = }")
-    # log.debug(f"{lapl_tensor.shape = }")
-    # log.debug(f"{torch.sum(lapl_tensor, axis=0).shape = }")
-    # import pdb; pdb.set_trace()
-    lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
+    # need to sum over ALL cartesian co-ordinates AND electron positions
+    # i.e. for 10 electrons we need to sum over the (3) dimension and the (10) dimension
+    # if `lapl_tensor` is size (3, 7, 10) then we sum over axes=(0, 2)
+    # the dimensions for df are (7, 10, 3) so then we sum over (1, 2)
+    lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
     log.debug(f"{lapl.shape = }")
     # import pdb; pdb.set_trace()
 
@@ -296,23 +294,21 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         # doesn't work like tensorflow
         # e_positions = torch.split(positions, [7, 1, 3], dim=1)
         e_positions = [positions[:, i, :] for i in range(positions.shape[1])]
-        log.debug(f"{positions.shape = }")
-        log.debug(f"{len(e_positions) = }")
-        log.debug(f"{e_positions[0].shape = }")
-        log.debug(f"{nelectrons = }")
+        # log.debug(f"{positions.shape = }")
+        # log.debug(f"{len(e_positions) = }")
+        # log.debug(f"{e_positions[0].shape = }")
+        # log.debug(f"{nelectrons = }")
 
-        log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
-        log.debug(f"{electronic_potential(e_positions).shape = }")
-        log.debug(f"{nuclear_potential(e_positions).shape = }")
-        import pdb; pdb.set_trace()
+        # log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
+        # log.debug(f"{electronic_potential(e_positions).shape = }")
+        # log.debug(f"{nuclear_potential(e_positions).shape = }")
+        # import pdb; pdb.set_trace()
 
         return (
             nuclear_potential(e_positions)
             + electronic_potential(e_positions)
             + nuclear_nuclear(positions.dtype)
         )
-
-
 
     return kinetic_from_log, potential
 

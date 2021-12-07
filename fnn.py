@@ -348,8 +348,14 @@ class FermiNet(torch.nn.Module):
         log.debug("\n")
 
         det = d_up*d_down
+        log.debug(f"{det.grad_fn = }")
+        log.debug(f"{torch.abs(det[0]).grad_fn = }")
+        log.debug(f"{max(torch.abs(det[0])).grad_fn = }")
+        log.debug(f"{torch.log(max(torch.abs(det[0]))).grad_fn = }")
 
-        log_det = torch.zeros(self.batch_size)
+        log_det = []
+        # log_det = torch.zeros(self.batch_size)
+        # log.debug(f"{log_det.grad_fn = }")
         abs_det = torch.abs(det)
 
         for i in range(self.batch_size):
@@ -358,14 +364,20 @@ class FermiNet(torch.nn.Module):
             # print(max_val)
             # print(det_no_max.shape)
             abs_max_det = max(abs_det[i])
-            log_det[i] = torch.log(abs_max_det) + torch.log(torch.abs(torch.sum(
+
+            # log.debug(f"{log_det.grad_fn = }")
+            log_det.append(torch.log(abs_max_det) + torch.log(torch.abs(torch.sum(
                 self.omega_weights
                 * torch.sign(det[i])
                 * torch.exp(
                     torch.log(abs_det[i]) - torch.log(abs_max_det)
                 )
-            )))
+            ))))
 
+            # log.debug(f"{log_det.grad_fn = }")
+            log.debug(f"{log_det[i].grad_fn = }")
+
+        # log.debug(f"{log_det.grad_fn = }")
         wavefunction = log_det
 
         # Weighted sum:
@@ -382,13 +394,17 @@ class FermiNet(torch.nn.Module):
         #     dim=-1
         # )
 
-        log.debug(f"{wavefunction.requires_grad = }")
-        log.debug(f"{wavefunction.shape = }")
+        # log.debug(f"{wavefunction.requires_grad = }")
+        # log.debug(f"{wavefunction.grad_fn = }")
+        # log.debug(f"{log_det.grad_fn = }")
+        # log.debug(f"{log_det.requires_grad = }")
+        # log.debug(f"{wavefunction.shape = }")
 
         log.debug(f"All done!\n{wavefunction = }")
         # log.debug(f"All done!\n{normed_wavefunction = }")
-        import pdb; pdb.set_trace()
-        return wavefunction
+        # import pdb; pdb.set_trace()
+        self.wavefunction = wavefunction
+        return wavefunction, log_det[0].grad_fn
 
 
 class FermiLayer(torch.nn.Module):

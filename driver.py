@@ -748,7 +748,7 @@ def main(molecule, spin_config):
 
     # what we've all been waiting for, the ACTUAL training!
     log.debug("Attempting to start the training")
-    loss_storage = trainer_object.train(
+    loss_array = trainer_object.train(
         # network_configuration,
         # optimizaiton_configuration,
         # kfac_configuration,
@@ -757,8 +757,11 @@ def main(molecule, spin_config):
     )
     log.debug("Training completed")
 
+    print(f"{loss_array = }")
+    import pdb; pdb.set_trace()
+
     # plot the training progress
-    # plotting.plot_training_metrics(loss_storage, name)
+    # plotting.plot_training_metrics(loss_array, name)
 
     # put the plotting here
     # plotting.plot_helium(network_object, name)

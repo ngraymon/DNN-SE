@@ -14,6 +14,8 @@ from torch.optim import optimizer
 from torch.optim.optimizer import Optimizer
 
 # local imports
+from log_conf import log
+from flags import flags
 
 
 class Train():
@@ -42,8 +44,9 @@ class Train():
         if bool_KFAC:
             self.train_KFAC()
 
-        losstot = []
-        phi_phisgn = [[], ]
+        # stores the loss for each epoch
+        loss_array = []
+        # phi_phisgn = [[], ]
 
         # creating the walkers...
         for i in range(self.param['epoch']):
@@ -53,23 +56,42 @@ class Train():
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
 
-            copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
+            # copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
 
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
-            # from the Hamiltonian extract potential and kinetic energy
-            kinetic = self.kinetic(phi, walkers, self.net)
-            potential = self.potential(walkers)
-            local_energy = kinetic + potential
+            # assert phi.require_grad is True, 'fuck'
 
-            # this is the "real" loss of the system, i.e the mean of the loss for that batch size
-            loss = torch.mean(local_energy, axis=1)
+            # from the Hamiltonian extract potential and kinetic energy
+            kinetic_value = self.kinetic(phi, walkers, self.net)
+            potential_value = self.potential(walkers)
+
+            log.debug(f"{kinetic_value.shape = }")
+            log.debug(f"{potential_value.shape = }")
+            # import pdb; pdb.set_trace()
+            local_energy = kinetic_value + potential_value
+            log.debug(f"{local_energy.shape = }")
+
+            # this is the "real" loss of the system, i.e the mean of the loss per batch
+            loss = torch.mean(local_energy)
+
+            # take the mean over the GPU replicas
+            if flags.multi_gpu:
+                mean_gpu_loss = torch.mean(loss, axis=0)
+            else:
+                # if only 1 GPU then just keep the loss
+                mean_gpu_loss = loss
 
             # default for now
             if self.clip_el is None:
                 # here is the loss being passed into the backward pass since we have an explicit
                 # expression for the gradient of the loss
-                computed_loss = torch.mean((local_energy - loss) * copy_of_phi)
+                relative_term = local_energy - mean_gpu_loss
+                # log.debug(f"{relative_term = }")
+                # log.debug(f"{copy_of_phi = }")
+                # log.debug(f"{relative_term.shape = }")
+                # log.debug(f"{copy_of_phi.shape = }")
+                computed_loss = torch.mean(relative_term * phi)
 
             else:
 
@@ -91,8 +113,12 @@ class Train():
 
             # compute the gradient w.r.t. the weights and update with ADAM
             computed_loss.backward()
-            Optimizer.step()
-            losstot.append(loss)
+            self.optimizer.step()
+            loss_array.append(loss)
             # phi_phisgn.append()
 
-        return losstot
+            log.debug(f"{loss_array = }")
+            log.debug(f"Completed epoch {i+1}")
+            import pdb; pdb.set_trace()
+
+        return loss_array
