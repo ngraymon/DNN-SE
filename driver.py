@@ -550,6 +550,7 @@ def prepare_mcmc_configuration(*args):
 def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     """ create the Train object """
     param = {'lr': 0.01, 'epoch': 100}
+    # param = {'r': flags.learning_rate, 'epoch': flags.iterations}
 
     # the current implementation
     if hartree_fock is None:
@@ -767,6 +768,7 @@ def main(molecule, spin_config):
     # put the plotting here
     import matplotlib.pyplot as plt
     plt.plot(loss_storage)
+    plt.savefig(join(result_path, "plot.pdf"))
     plt.show()
     # plotting.plot_helium(network_object, name)
 
