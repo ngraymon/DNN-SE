@@ -7,7 +7,6 @@ from utils.units import angstrom2bohr
 from flags import flags
  #to flags 
 
-plot_path='plots/'
 
 
 def plot_helium(NN):
