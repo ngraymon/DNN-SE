@@ -743,11 +743,31 @@ def main(molecule, spin_config):
     print("Success!")
 
 
-if __name__ == '__main__':
+def prepare_parsed_arguments():
+    """ Wrapper for argparser setup """
 
     # use input to specify system for debugging purposes
-    name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'
-    number = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+    # name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'
+    # number = int(sys.argv[2]) if len(sys.argv) > 2 else 1
+
+    # formatclass = argparse.RawDescriptionHelpFormatter
+    # formatclass = argparse.RawTextHelpFormatter
+    formatclass = argparse.ArgumentDefaultsHelpFormatter  # I liked this the best
+    # formatclass = argparse.MetavarTypeHelpFormatter
+
+    # parse the arguments
+    parser = argparse.ArgumentParser(description="Variational auto-encoder (VAE)", formatter_class=formatclass)
+    parser.add_argument('--input', type=str, default='data/even_mnist.csv', metavar='input.csv', help='training data file')
+    parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for json attributes')
+    parser.add_argument('-res-path', type=str, default='results', metavar='results_dir', help='path to save the plots at')
+    parser.add_argument('-n', type=int, default=100, metavar='N_DIGIT_SAMPLES', help='number of digit sample images to generate')
+    parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity')
+
+    return parser.parse_args()
+
+
+def prepare_system(pargs):
+    """ x """
 
     # hydrogen (simplest test case)
     if name == "hydrogen":
@@ -772,5 +792,18 @@ if __name__ == '__main__':
     for i, m in enumerate(molecule):
         print(f"  Atom {i}: {m}")
     print(f"  {spins = }\n")
+
+    return molecule, spins
+
+
+if __name__ == '__main__':
+
+    setLevelDebug()
+
+    # process the users input
+    pargs = prepare_parsed_arguments()
+
+    # prepare the system
+    molecule, spins = prepare_system(pargs)
 
     main(molecule, spins)
