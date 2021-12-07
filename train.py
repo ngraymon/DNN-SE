@@ -58,7 +58,7 @@ class Train():
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
-            kinetic = self.kinetic(phi, walkers, self.net)
+            kinetic = self.kinetic(phi, walkers, self.net).detach()
             potential = self.potential(walkers)
             local_energy = kinetic + potential
 
@@ -90,7 +90,7 @@ class Train():
                 computed_loss = torch.mean((cliped_local - loss) * copy_of_phi)
 
             # compute the gradient w.r.t. the weights and update with ADAM
-            computed_loss.backward()
+            computed_loss.backward(retain_graph=True)
             # Optimizer.step()
             self.optimizer.step()
             losstot.append(loss)
