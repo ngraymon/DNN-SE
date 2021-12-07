@@ -4,13 +4,16 @@ from numpy.core.function_base import linspace
 import torch
 import os
 from utils.units import angstrom2bohr
+from flags import flags
  #to flags 
-n_step_plot=40
+
 plot_path='plots/'
 
 
-def plot(NN):
+def plot_helium(NN):
     plt.rcParams['text.usetex'] = True
+    n_step_plot=flags.n_step_plot
+    plot_path=flags.plot_path
     #fix the first electron for the Helium atom and vary the second
     #(0.5,0,0)a_0
     #(x,0,0)a_0, x linespace(-1,1,20)
@@ -40,7 +43,15 @@ def plot(NN):
         os.remove(strFile)  
     plt.savefig(strFile)
 
-
-
+def plot_loss(losstot):
+    plt.rcParams['text.usetex'] = True
+    plot_path=flags.plot_path
+    plt.plot(losstot)
+    plt.xlabel('Epoch')
+    plt.ylabel('Local Energy (loss) [J]')
+    strFile=plot_path+'Local_Energy.png'
+    if os.path.isfile(strFile):
+        os.remove(strFile)  
+    plt.savefig(strFile)
 
 

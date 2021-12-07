@@ -170,6 +170,11 @@ flags.jastrow_en = False
 flags.jastrow_ee = False
 flags.jastrow_een = False
 
+
+# plotting flags 
+# plotting 
+flags.n_step_plot=40
+flags.plot_path='plots/'
 """There are flags for debugging, do we need these?"""
 
 
