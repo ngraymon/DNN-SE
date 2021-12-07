@@ -66,7 +66,7 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     if not using_hessian:
         # log.debug(f"\n{df = }")
@@ -130,7 +130,7 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
                 lapl_tensor = torch.diagonal(hess)
                 assert (lapl_tensor != float('nan')).all(), 'nans in the hessian'
                 log.debug(f"{lapl_tensor = }")
-                import pdb; pdb.set_trace()
+                # import pdb; pdb.set_trace()
 
 
     # log.debug(f"{lapl_tensor = }")
@@ -139,7 +139,7 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     # import pdb; pdb.set_trace()
     lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
     log.debug(f"{lapl.shape = }")
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     return -0.5*torch.unsqueeze(lapl, -1)
 
@@ -214,14 +214,14 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
             coords = torch.tensor(atom.coords, dtype=e_positions[0].dtype)
             v.extend([-charge / smooth_norm(coords - x) for x in e_positions])
 
-        log.debug(f"{len(atoms) = }")
-        log.debug(f"{len(e_positions) = }")
-        log.debug(f"{e_positions[0].shape = }")
-        log.debug(f"{v[0].shape = }")
-        log.debug(f"{len(v) = }")
+        # log.debug(f"{len(atoms) = }")
+        # log.debug(f"{len(e_positions) = }")
+        # log.debug(f"{e_positions[0].shape = }")
+        # log.debug(f"{v[0].shape = }")
+        # log.debug(f"{len(v) = }")
+        # log.debug(f"{sum(v).shape = }")
 
-        # v = torch.tensor(v)
-        return torch.sum(v, axis=0)
+        return sum(v)
 
     def electronic_potential(e_positions):
         '''
@@ -241,9 +241,8 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         if len(e_positions) > 1:
             v = []
             for (i, ri) in enumerate(e_positions):
-                v.extend([1 / smooth_norm(ri - rj) for rj in xs[i + 1:]])
-            v = torch.tensor(v)
-            return torch.sum(v)
+                v.extend([1 / smooth_norm(ri - rj) for rj in e_positions[i + 1:]])
+            return sum(v)
         else:
             return torch.tensor(0.0)
 
@@ -266,12 +265,15 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
 
         # Loops over all the combinations of atoms in the system
         for i, atom_i in enumerate(atoms):
-            for atom_j in atomes[i+1:]:
+            for atom_j in atoms[i+1:]:
+
                 # Charge of atom i an atom j.
                 qij = float(atom_i.charge * atom_j.charge)
+
                 # Add the potential between atom i and atom j.
-                vnn += qij / np.linalg.norm(atom_i.coords_array
-                                            - atom_j.coords_array)
+                vnn += qij / np.linalg.norm(
+                    np.array(atom_i.coords) - np.array(atom_j.coords)
+                )
 
         return torch.tensor([vnn], dtype=dtype)
 
@@ -291,15 +293,23 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         The total potential
         '''
 
-        e_positions = torch.split(positions, nelectrons, dim=1)
+        # doesn't work like tensorflow
+        # e_positions = torch.split(positions, [7, 1, 3], dim=1)
+        e_positions = [positions[:, i, :] for i in range(positions.shape[1])]
+        log.debug(f"{positions.shape = }")
+        log.debug(f"{len(e_positions) = }")
+        log.debug(f"{e_positions[0].shape = }")
+        log.debug(f"{nelectrons = }")
 
+        log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
+        log.debug(f"{electronic_potential(e_positions).shape = }")
         log.debug(f"{nuclear_potential(e_positions).shape = }")
         import pdb; pdb.set_trace()
 
         return (
             nuclear_potential(e_positions)
             + electronic_potential(e_positions)
-            + nuclear_nuclear(e_positions.dtype)
+            + nuclear_nuclear(positions.dtype)
         )
 
 
