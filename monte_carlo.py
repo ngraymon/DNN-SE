@@ -123,12 +123,10 @@ class MonteCarlo():
 
     def compute_psi(self, visible_nodes, *args, **kwargs):
         """ x """
+        # torch.autograd.set_detect_anomaly(True)
         ret = self.net.forward(visible_nodes, *args, **kwargs)
         assert ret.requires_grad is True
-        print('a', ret, ret.shape)
-        # ret /= max(ret.clone())
-        # print(ret)
-        import pdb; pdb.set_trace()
+        # log.debug(f"{ret = }\n{ret.shape = }")
         return ret
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):

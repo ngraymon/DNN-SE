@@ -58,12 +58,12 @@ class Train():
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
-            kinetic = self.kinetic(phi, walkers, self.net).detach()
-            potential = self.potential(walkers).detach()
+            kinetic = self.kinetic(phi, walkers, self.net)
+            potential = self.potential(walkers)
             local_energy = kinetic + potential
 
             # this is the "real" loss of the system, i.e the mean of the loss for that batch size
-            loss = torch.mean(local_energy)
+            loss = torch.mean(local_energy, axis=1)
 
             # default for now
             if self.clip_el is None:

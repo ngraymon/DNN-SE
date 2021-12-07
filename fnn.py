@@ -128,11 +128,12 @@ class FermiNet(torch.nn.Module):
         and get a (7, 10, 5, 1) output
         see (https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html) for more info
         """
-        norm_eN_vectors = torch.linalg.vector_norm(self.eN_vectors, dim=-1, keepdim=True)
+        with torch.no_grad():
+            norm_eN_vectors = torch.linalg.vector_norm(self.eN_vectors, dim=-1, keepdim=True)
         log.debug(f"{norm_eN_vectors.shape = }")
 
         # concatenate (7, 10, 5, 3) with (7, 10, 5, 1) to get (7, 10, 5, 4)
-        single_stream = torch.cat((self.eN_vectors, norm_eN_vectors), dim=-1)
+        single_stream = torch.cat((norm_eN_vectors, self.eN_vectors), dim=-1)
         log.debug(f"{single_stream.shape = }")
 
         if False:
@@ -171,11 +172,18 @@ class FermiNet(torch.nn.Module):
         and get a (7, 10, 10, 1) output
         see (https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html) for more info
         """
-        norm_ee_vectors = torch.linalg.vector_norm(self.ee_vectors, dim=-1, keepdim=True)
+        with torch.no_grad():
+            norm_ee_vectors = torch.linalg.vector_norm(self.ee_vectors, dim=-1, keepdim=True)
         log.debug(f"{norm_ee_vectors.shape = }")
+        # for i in range(7):
+        #     log.debug(f"\n{self.ee_vectors[i] = }")
+        #     import pdb; pdb.set_trace()
+
+        # assert not torch.isclose(norm_ee_vectors, torch.zeros_like(norm_ee_vectors)).any(), 'oh no were fucked'
+        # log.debug(f"{norm_ee_vectors = }")
 
         # concatenate (7, 10, 10, 3) with (7, 10, 10, 1) to get (7, 10, 10, 4)
-        double_stream = torch.cat((self.ee_vectors, norm_ee_vectors), dim=-1)
+        double_stream = torch.cat((norm_ee_vectors, self.ee_vectors), dim=-1)
         log.debug(f"{double_stream.shape = }")
 
         if False:
@@ -189,6 +197,9 @@ class FermiNet(torch.nn.Module):
     def preprocess(self, electron_positions):
         """ Prepare the visible layers from the single and double steam h tensors """
         log.debug("Creating the single and double streams from the electron positions\n")
+
+        # log.debug(f"0\n{electron_positions[0]}")
+        log.debug(f"{electron_positions.shape}")
 
         # single_h_vecs_vector
         single_h_stream = self._preprocess_single_stream(electron_positions)
@@ -330,9 +341,32 @@ class FermiNet(torch.nn.Module):
         log.debug(f"Compute the determinants")
         d_up = torch.det(phi_up)
         d_down = torch.det(phi_down)
+        assert (d_up != 0.0).all(), 'singular up matrices'
+        assert (d_down != 0.0).all(), 'singular up matrices'
         log.debug(f"{d_up.shape = }")
         log.debug(f"{d_down.shape = }")
         log.debug("\n")
+
+        det = d_up*d_down
+
+        log_det = torch.zeros(self.batch_size)
+        abs_det = torch.abs(det)
+
+        for i in range(self.batch_size):
+            # no_max_mask = torch.arange(num_replicas)
+            # det_no_max = det[i, det[i] != max_val]
+            # print(max_val)
+            # print(det_no_max.shape)
+            abs_max_det = max(abs_det[i])
+            log_det[i] = torch.log(abs_max_det) + torch.log(torch.abs(torch.sum(
+                self.omega_weights
+                * torch.sign(det[i])
+                * torch.exp(
+                    torch.log(abs_det[i]) - torch.log(abs_max_det)
+                )
+            )))
+
+        wavefunction = log_det
 
         # Weighted sum:
         log.debug(f"Compute the wavefunction")
@@ -342,18 +376,19 @@ class FermiNet(torch.nn.Module):
         assert d_down.requires_grad is True
         assert self.omega_weights.requires_grad is True
 
-        wavefunction = torch.sum(self.omega_weights * d_up * d_down, dim=-1)  # sum of result of element-wise multiplications
-        normed_wavefunction = torch.sum(
-            torch.nn.functional.normalize(self.omega_weights * d_up * d_down),
-            dim=-1
-        )
+        # wavefunction = torch.sum(self.omega_weights * d_up * d_down, dim=-1)  # sum of result of element-wise multiplications
+        # normed_wavefunction = torch.sum(
+        #     torch.nn.functional.normalize(self.omega_weights * d_up * d_down),
+        #     dim=-1
+        # )
+
         log.debug(f"{wavefunction.requires_grad = }")
         log.debug(f"{wavefunction.shape = }")
 
         log.debug(f"All done!\n{wavefunction = }")
-        log.debug(f"All done!\n{normed_wavefunction = }")
+        # log.debug(f"All done!\n{normed_wavefunction = }")
         import pdb; pdb.set_trace()
-        return normed_wavefunction
+        return wavefunction
 
 
 class FermiLayer(torch.nn.Module):
