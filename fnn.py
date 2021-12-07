@@ -235,7 +235,7 @@ class FermiNet(torch.nn.Module):
         """ saves the model to a file """
 
         # this first one saves the whole network, everything included (and dependencies)
-        torch.save(self, path)
+        torch.save(self, join(path, '_state'))
 
         # this one only saves the weights and biases (i.e. tune-able parameters)
         torch.save(self.state_dict(), join(path, '_state_dict'))

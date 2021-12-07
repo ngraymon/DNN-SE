@@ -13,6 +13,7 @@ import os
 from os.path import abspath, join, dirname, isdir
 import sys
 from datetime import datetime as dt
+import time
 from types import SimpleNamespace
 from typing import Optional, Sequence
 
@@ -548,7 +549,7 @@ def prepare_mcmc_configuration(*args):
 
 def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     """ create the Train object """
-    param = {'lr': 0.01, 'epoch': 1000}
+    param = {'lr': 0.01, 'epoch': 100}
 
     # the current implementation
     if hartree_fock is None:
@@ -756,7 +757,9 @@ def main(molecule, spin_config):
         **kwargs
     )
     log.debug("Training completed")
-    # print(loss_storage)
+    #Save:
+    network_object.save(result_path)
+    log.info("Model Saved.")
 
     # plot the training progress
     # plotting.plot_training_metrics(loss_storage, name)
