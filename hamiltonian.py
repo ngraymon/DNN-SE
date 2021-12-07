@@ -305,7 +305,7 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
         log.debug(f"{electronic_potential(e_positions).shape = }")
         log.debug(f"{nuclear_potential(e_positions).shape = }")
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
 
         return (
             nuclear_potential(e_positions)

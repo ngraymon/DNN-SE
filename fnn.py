@@ -387,7 +387,7 @@ class FermiNet(torch.nn.Module):
 
         log.debug(f"All done!\n{wavefunction = }")
         # log.debug(f"All done!\n{normed_wavefunction = }")
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         return wavefunction
 
 

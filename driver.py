@@ -548,7 +548,7 @@ def prepare_mcmc_configuration(*args):
 
 def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     """ create the Train object """
-    param = {'lr': 0.01, 'epoch': 10}
+    param = {'lr': 0.01, 'epoch': 1000}
 
     # the current implementation
     if hartree_fock is None:
@@ -756,11 +756,15 @@ def main(molecule, spin_config):
         **kwargs
     )
     log.debug("Training completed")
+    # print(loss_storage)
 
     # plot the training progress
     # plotting.plot_training_metrics(loss_storage, name)
 
     # put the plotting here
+    import matplotlib.pyplot as plt
+    plt.plot(loss_storage)
+    plt.show()
     # plotting.plot_helium(network_object, name)
 
     print("Success!")
@@ -768,7 +772,7 @@ def main(molecule, spin_config):
 
 if __name__ == '__main__':
 
-    setLevelDebug()
+    # setLevelDebug()
 
     # use input to specify system for debugging purposes
     name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'

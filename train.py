@@ -5,6 +5,8 @@ This module preforms the training
 """
 
 # system imports
+from log_conf import log
+import time
 
 # third party imports
 import torch
@@ -14,6 +16,7 @@ from torch.optim import optimizer
 from torch.optim.optimizer import Optimizer
 
 # local imports
+
 
 
 class Train():
@@ -46,7 +49,14 @@ class Train():
         phi_phisgn = [[], ]
 
         # creating the walkers...
+        last_time = time.time()#for epoch No. output
         for i in range(self.param['epoch']):
+            #for epoch No. output:
+            new_time = time.time()
+            if new_time - last_time > 5:#waits 5 seconds between outputs
+                last_time = new_time + 0
+                log.info(f"Epoch: {i+1}")
+            #
 
             self.net.zero_grad()
             # get wavefunction for each one of these configuration, creates the configurations for each electron
@@ -63,7 +73,8 @@ class Train():
             local_energy = kinetic + potential
 
             # this is the "real" loss of the system, i.e the mean of the loss for that batch size
-            loss = torch.mean(local_energy, axis=1)
+            loss = torch.mean(local_energy)
+            # print(f"\t\t\t\t\t\t{copy_of_phi = }")
 
             # default for now
             if self.clip_el is None:
@@ -93,7 +104,7 @@ class Train():
             computed_loss.backward(retain_graph=True)
             # Optimizer.step()
             self.optimizer.step()
-            losstot.append(loss)
+            losstot.append(loss.item())
             # phi_phisgn.append()
 
         return losstot
