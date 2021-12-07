@@ -393,7 +393,8 @@ def generate_electron_position_vector(molecule, electron_spec):
     log.debug(f"\nwalker tensor:\n{tab}{walker_string}")
 
     # glue the two lists together
-    electron_positions = np.concatenate(up_spin_list + down_spin_list)
+    # print(proposed_electron_spec)
+    electron_positions = np.array(both_spins_list).reshape((sum(electron_spec), 3))
 
     return electron_positions
 
@@ -607,7 +608,7 @@ def prepare_network(molecule, nof_electrons, spin_config):
         electron_positions,
         nuclear_positions,
         flags.hidden_units,
-        num_determinants=2
+        num_determinants=flags.determinants
     )
 
 

@@ -37,30 +37,40 @@ def kinetic_from_log(f, x, network, using_hessian=False):
     The kinetic energy function.
     '''
 
+    # cheat and normalize f
+    log.debug(f"before normalization \n{f = }")
+    print(max(f.clone()))
+    print(f / max(f.clone()))
+    f /= min(f.clone())
+    log.debug(f"after normalization  \n{f = }")
+    import pdb; pdb.set_trace()
+
     n_replicas = int(x.shape[0])
 
     log.debug(f"{n_replicas = }")
-    # log.debug(f"{f = }")
-    # log.debug(f"{x = }")
+    # log.debug(f"\n{f = }")
+    # log.debug(f"\n{x = }")
+    log.debug(f"{f.shape = }")
+    log.debug(f"{x.shape = }")
 
     lapl_tensor = []
-    import pdb; pdb.set_trace()
 
     # do the fake x^2 thing
-    if True:
+    if False:
         y = x**2
         df, = grad(y, x, create_graph=True, grad_outputs=torch.ones_like(f))
     # what we actually want to do
     else:
-        df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
+        df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
+        # df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
 
     # # assert (df == x*2).all(), 'not the same'
 
-    log.debug(f"\n{f = }")
-    log.debug(f"\n{df = }")
-    log.debug(f"\n{2*x = }")
+    # log.debug(f"\n{f = }")
+    # log.debug(f"\n{df = }")
     # log.debug(f"\n{df[..., 0] = }")
     # log.debug(f"\n{x = }")
+    log.debug(f"{f.shape = }")
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
@@ -85,8 +95,10 @@ def kinetic_from_log(f, x, network, using_hessian=False):
 
             # detached = df.detach()
             input_df = torch.unsqueeze(df[..., i], -1)
-            log.debug(f"\n{input_df = }")
-            log.debug(f"\n{x = }")
+            log.debug(f"\n{input_df[0] = }")
+            log.debug(f"\n{x[0] = }")
+            log.debug(f"{x.shape = }")
+            log.debug(f"{input_df.shape = }")
 
             import pdb; pdb.set_trace()
 
@@ -98,9 +110,7 @@ def kinetic_from_log(f, x, network, using_hessian=False):
                 retain_graph=True,
                 grad_outputs=torch.ones_like(input_df)
             )
-            log.debug(f"\n{df2 = }")
-            # log.debug(f"{ = }")
-            # assert (2 == df2).all()
+            log.debug(f"\n{df2[0] = }")
             log.debug(f"{df2.shape = }")
 
             lapl_elem = df2[..., i]

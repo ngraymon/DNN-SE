@@ -16,6 +16,8 @@ import numpy as np
 # local imports
 from log_conf import log
 
+tab = " "*4  # define tab as 4 spaces
+
 
 class FermiNet(torch.nn.Module):
     """ x """
@@ -74,16 +76,15 @@ class FermiNet(torch.nn.Module):
         log.debug('Finished initializing the network layers\n')
 
     def _initialize_trainable_parameters(self, nof_determinants, nof_electrons, nof_nuclei):
-        """ Randomly initialize trainable parameters
-
-        The `h_sizes[-1][0]` is the last layer's zero'th ????
-        """
+        """ Randomly initialize trainable parameters """
 
         # lambda function takes any number of args and passes them on
         p_func = lambda *size: torch.nn.Parameter(torch.rand(size))
 
         # w vectors have size (nof_determinants)
-        self.final_weights = p_func(nof_determinants, nof_electrons, self.layer_dimensions[-1][0])
+        last_layer_dim = self.layer_dimensions[-1]
+        single_stream_dim = last_layer_dim[0]
+        self.final_weights = p_func(nof_determinants, nof_electrons, single_stream_dim)
 
         # g scalars
         self.final_biases = p_func(nof_determinants, nof_electrons)
@@ -102,39 +103,36 @@ class FermiNet(torch.nn.Module):
         see https://pytorch.org/docs/stable/generated/torch.unsqueeze.html
         """
 
-        # create empty tensor
-        shape = (self.n, self.I, 3)
-        self.eN_vectors = torch.empty(shape)
-
         """ the broadcasting for this operation is as follows
-        (A, B, C) = (A, 1, C) - (1, B, C)
+        (B, E, N, C) = (B, E, 1, C) -  (N, C)
             - C is always 3 (representing the three cartesian co-ordinates)
-            - A is the # of electrons
-            - B is the number of nuclei
+            - E is the # of electrons
+            - N is the number of nuclei
+            - B is the batch size
 
-        so for methane with 5 atoms and 10 electrons you get
-            (10, 5, 3) = (10, 1, 3) - (1, 5, 3)
+        so for 7 batches of methane with 5 atoms and 10 electrons you get
+            (7, 10, 5, 3) = (7, 10, 1, 3) - (5, 3)
         """
         log.debug(f"{electron_positions.shape = }")
         log.debug(f"{self.nuclei_positions.shape = }")
+        log.debug(
+            f"{torch.unsqueeze(electron_positions, -2).shape}"
+            " - "
+            f"{self.nuclei_positions.shape}"
+        )
 
-        self.eN_vectors = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(self.nuclei_positions, 0)
+        self.eN_vectors = torch.unsqueeze(electron_positions, -2) - self.nuclei_positions
         log.debug(f"{self.eN_vectors.shape = }")
 
-        """ if we have (10, 5, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
-        and get a (10, 5, 1) output
+        """ if we have (7, 10, 5, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
+        and get a (7, 10, 5, 1) output
         see (https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html) for more info
         """
-        norm_eN_vectors = torch.linalg.vector_norm(self.eN_vectors, dim=2, keepdim=True)
+        norm_eN_vectors = torch.linalg.vector_norm(self.eN_vectors, dim=-1, keepdim=True)
+        log.debug(f"{norm_eN_vectors.shape = }")
 
-        """ see function `_build` from line 729 in `networks.py` for reference
-        its unclear if we need some of this code yet?
-        log.debug(f"{eN_vectors.shape = }\n{self.spin_config}")
-        a = torch.split(eN_vectors, self.spin_config, dim=0)
-        """
-
-        # concatenate (10, 5, 3) with (10, 5, 1) to get (10, 5, 4)
-        single_stream = torch.cat((self.eN_vectors, norm_eN_vectors), dim=2)
+        # concatenate (7, 10, 5, 3) with (7, 10, 5, 1) to get (7, 10, 5, 4)
+        single_stream = torch.cat((self.eN_vectors, norm_eN_vectors), dim=-1)
         log.debug(f"{single_stream.shape = }")
 
         if False:
@@ -148,30 +146,36 @@ class FermiNet(torch.nn.Module):
     def _preprocess_double_stream(self, electron_positions):
         """ Create the torch tensor storing the distance between pairs of electrons """
 
-        # create empty tensor
-        shape = (self.n, self.n, 3)
-        self.ee_vectors = torch.empty(shape)
-
         """ the broadcasting for this operation is as follows
-        (A, B, C) = (A, 1, C) - (1, B, C)
+        (B, e1, e2, C) = (B, e1, 1, C) - (B, 1, e2, C)
             - C is always 3 (representing the three cartesian co-ordinates)
-            - A is the # of electrons
-            - B is the # of electrons
+            - e1 is the # of electrons
+            - e2 is the # of electrons
+            - B is the batch size
 
-        so for methane with 10 electrons you get
-            (10, 10, 3) = (10, 1, 3) - (1, 10, 3)
+        so for 7 batches of methane with 10 electrons you get
+            (7, 10, 10, 3) = (7, 10, 1, 3) - (7, 1, 10, 3)
         """
-        self.ee_vectors = torch.unsqueeze(electron_positions, 1) - torch.unsqueeze(electron_positions, 0)
+        log.debug(f"{electron_positions.shape = }")
+        log.debug(f"{electron_positions.shape = }")
+        log.debug(
+            f"{torch.unsqueeze(electron_positions, -2).shape}"
+            " - "
+            f"{torch.unsqueeze(electron_positions, -3).shape}"
+        )
+
+        self.ee_vectors = torch.unsqueeze(electron_positions, -2) - torch.unsqueeze(electron_positions, -3)
         log.debug(f"{self.ee_vectors.shape = }")
 
-        """ if we have (10, 10, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
-        and get a (10, 10, 1) output
+        """ if we have (7, 10, 10, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
+        and get a (7, 10, 10, 1) output
         see (https://pytorch.org/docs/stable/generated/torch.linalg.vector_norm.html) for more info
         """
-        norm_ee_vectors = torch.linalg.vector_norm(self.ee_vectors, dim=2, keepdim=True)
+        norm_ee_vectors = torch.linalg.vector_norm(self.ee_vectors, dim=-1, keepdim=True)
+        log.debug(f"{norm_ee_vectors.shape = }")
 
-        # concatenate (10, 10, 3) with (10, 10, 1) to get (10, 10, 4)
-        double_stream = torch.cat((self.ee_vectors, norm_ee_vectors), dim=2)
+        # concatenate (7, 10, 10, 3) with (7, 10, 10, 1) to get (7, 10, 10, 4)
+        double_stream = torch.cat((self.ee_vectors, norm_ee_vectors), dim=-1)
         log.debug(f"{double_stream.shape = }")
 
         if False:
@@ -186,16 +190,14 @@ class FermiNet(torch.nn.Module):
         """ Prepare the visible layers from the single and double steam h tensors """
         log.debug("Creating the single and double streams from the electron positions\n")
 
-        log.debug((type(self.nuclei_positions), self.nuclei_positions.shape))
-        log.debug((type(electron_positions), electron_positions.shape))
-
         # single_h_vecs_vector
         single_h_stream = self._preprocess_single_stream(electron_positions)
-        log.debug(f"{single_h_stream = }")
+
+        # we need to flatten the last two dimensions
+        single_h_stream = single_h_stream.flatten(start_dim=-2)
 
         # double_h_vecs_matrix
         double_h_stream = self._preprocess_double_stream(electron_positions)
-        log.debug(f"{double_h_stream = }")
 
         # debug
         log.debug(f"{single_h_stream.shape = }")
@@ -204,12 +206,17 @@ class FermiNet(torch.nn.Module):
         """ Reminder that the two streams have different dimensionality
         and therefore we cannot simply concatenate them together.
         Using our prior examples the sizes are:
-            single_h_stream: (10, 5, 4)
-            double_h_stream: (10, 10, 4)
+            single_h_stream: (7, 10, 5*4)
+            double_h_stream: (7, 10, 10, 4)
+
+        Given
+        - 4 is 3 cartesian co-ordinates and its respective 1-norm
+        - 10 is the # of electrons
+        - 5 is the number of nuclei
+        - 7 is the batch size
 
         Therefore we store them in a simple list
         """
-
         self.visible_layers = [single_h_stream, double_h_stream]
         log.debug("Finished creating the single and double streams\n")
 
@@ -224,104 +231,129 @@ class FermiNet(torch.nn.Module):
 
         log.debug("FermiNet model saved to file '{0}'. To load, use 'model = torch.load({0})'".format(path))
 
-    def compute_up_spin_phis(self, layer_outputs, phi_up, k):
+    def compute_orbitals(self, layer_outputs, phi_up, phi_down):
         """ up spin """
 
-        # this can probably be improved to use broadcasting and torch calls
-        for i, j in it.product(range(self.n_up), repeat=2):
-            final_dot = self.final_biases[k][i] + torch.dot(
-                self.final_weights[k][i],
-                layer_outputs[-1][0][j]
-            )
-            env_sum = torch.sum(
-                torch.stack(
-                    [
-                        self.pi_weights[k][i][m] * torch.exp(
-                            -torch.norm(
-                                self.sigma_weights[k][i][m] * self.eN_vectors[j][m]
-                            )
-                        )
-                        for m in range(self.I)
-                    ]
+        # determinant index
+        weights = self.final_weights
+        biases = self.final_biases
+
+        pi_weights = self.pi_weights
+        sigma_weights = self.sigma_weights
+
+        # log.debug(f"For determinant {k+1}:")
+        log.debug(f"{self.final_weights.shape = } {self.final_biases.shape = }")
+        log.debug(f"{weights.shape = } {biases.shape = }")
+        log.debug(f"{self.pi_weights.shape = } {self.sigma_weights.shape = }")
+        log.debug(f"{pi_weights.shape = } {sigma_weights.shape = }")
+
+        if False:  # for debugging
+            for i, layer in enumerate(layer_outputs):
+                log.debug(f"layer {i} single stream shape: {layer[0].shape}")
+                log.debug(f"layer {i} double stream shape: {layer[1].shape}")
+
+        # has dimension of size [(7, 10, 32), (7, 10, 10, 4, 0)]
+        last_layer = layer_outputs[-1]
+
+        # has dimension of (7, 10, 32)
+        last_layers_single_stream = last_layer[0]
+        log.debug(f"{last_layers_single_stream.shape = }")
+
+        # broadcasted dot product; the (w * h + g) term in equation 6 in the paper
+        # has an output shape of
+        # (batch_size, num_determinants, n_electrons, n_electrons)
+        # (7, 16, 10, 10)
+        weighted_network_output = biases[None, :, :, None] + torch.mul(
+            # has dimension of (batch_size, 1, 1, 10, 32)
+            last_layers_single_stream[:, None, None, :, :],
+            # has dimension of (1, 16, 10, 1, 32)
+            weights[None, :, :, None, :]
+        ).sum(-1)
+        log.debug(f"{weighted_network_output.shape = }")
+
+        # broadcasted operations; the "sum over m" term in equation 6 in the paper
+        decaying_potentials = torch.mul(
+            # has dimension of (1, 16, 10, 1, 5)
+            pi_weights[None, :, :, None, :],
+            torch.exp(
+                -torch.norm(torch.mul(
+                        # has dimension of (1, 16, 10, 1, 5, 1)
+                        sigma_weights[None, :, :, None, :, None],
+                        # has dimension of (7, 1, 1, 10, 5, 3)
+                        self.eN_vectors[:, None, None, :, :, :]
+                    ),
+                    dim=-1  # take the norm over the (x,y,z) dimension
                 )
             )
+        ).sum(-1)  # preform the sum over the nuclei dimension
+        log.debug(f"{decaying_potentials.shape = }")
 
-            phi_up[k][i][j] = final_dot * env_sum
+        orbitals = torch.mul(weighted_network_output, decaying_potentials)
+        log.debug(f"{orbitals.shape = }")
 
-    def compute_down_spin_phis(self, layer_outputs, phi_down, k):
-        """ down spin """
+        phi_up[:] = orbitals[:, :, :self.n_up, :self.n_up]
+        phi_down[:] = orbitals[:, :, self.n_up:, self.n_up:]
 
-        # this can probably be improved to use broadcasting and torch calls
-        for i, j in it.product(range(self.n_up, self.n), repeat=2):
-            final_dot = self.final_biases[k][i] + torch.dot(
-                self.final_weights[k][i],
-                layer_outputs[-1][0][j]
-            )
-            env_sum = torch.sum(
-                torch.stack(
-                    [
-                        self.pi_weights[k][i][m] * torch.exp(
-                            -torch.norm(
-                                self.sigma_weights[k][i][m] * self.eN_vectors[j][m]
-                            )
-                        )
-                        for m in range(self.I)
-                    ]
-                )
-            )
-
-            phi_down[k][i-self.n_up][j-self.n_up] = final_dot * env_sum
-
-    def forward(self, electron_positions, multi=False):
+    def forward(self, electron_positions):
         """ x """
 
-        log.debug(type(electron_positions))
-        # import pdb; pdb.set_trace()
+        self.batch_size = electron_positions.shape[0]
 
         if electron_positions is not None:
-            if not multi:
-                self.preprocess(electron_positions)
-
-        # if multi is True, then the network forwards a list of walkers and returns a list of outputs
-        # this should just be replaced with broadcasting?!
-        if multi:
-            return [self.forward(electron_positions=electron_positions[i]) for i in range(len(electron_positions))]
+            self.preprocess(electron_positions)
 
         # Reminder that `self.visible_layers` is a length two list:
-        # [(10, 5, 4), (10, 10, 4)]
+        # [(7, 10, 5*4), (7, 10, 10, 4)] for methane with 7 batches
         layer_outputs = [self.visible_layers]
-
-        # import pdb; pdb.set_trace()
 
         for layer in self.layers[:-1]:
             layer_outputs.append(layer.layer_forward(layer_outputs[-1]))
 
         layer_outputs.append(self.layers[-1].layer_forward(layer_outputs[-1]))
 
-        log.debug(f"Finished propagating through the network")
+        log.debug(f"Finished propagating through the network\n")
 
         # instantiate final matrices:
         log.debug(f"Instantiate the orbitals tensors")
-        phi_up = torch.empty(self.num_determinants, self.n_up, self.n_up)
-        phi_down = torch.empty(self.num_determinants, self.n_down, self.n_down)
+        phi_up = torch.empty(self.batch_size, self.num_determinants, self.n_up, self.n_up)
+        phi_down = torch.empty(self.batch_size, self.num_determinants, self.n_down, self.n_down)
+        log.debug(f"{phi_up.shape = }")
+        log.debug(f"{phi_down.shape = }")
+        log.debug("\n")
 
         # compute components of the determinants
         log.debug(f"Compute the orbitals")
-        for k in range(self.num_determinants):
-            self.compute_up_spin_phis(layer_outputs, phi_up, k)
-            self.compute_down_spin_phis(layer_outputs, phi_down, k)
+        self.compute_orbitals(layer_outputs, phi_up, phi_down)
+        log.debug("\n")
 
         # compute the determinants:
         log.debug(f"Compute the determinants")
         d_up = torch.det(phi_up)
         d_down = torch.det(phi_down)
+        log.debug(f"{d_up.shape = }")
+        log.debug(f"{d_down.shape = }")
+        log.debug("\n")
 
         # Weighted sum:
         log.debug(f"Compute the wavefunction")
-        wavefunction = torch.sum(self.omega_weights * d_up * d_down)  # sum of result of element-wise multiplications
+
+        # double check they all have gradients?
+        assert d_up.requires_grad is True
+        assert d_down.requires_grad is True
+        assert self.omega_weights.requires_grad is True
+
+        wavefunction = torch.sum(self.omega_weights * d_up * d_down, dim=-1)  # sum of result of element-wise multiplications
+        normed_wavefunction = torch.sum(
+            torch.nn.functional.normalize(self.omega_weights * d_up * d_down),
+            dim=-1
+        )
+        log.debug(f"{wavefunction.requires_grad = }")
+        log.debug(f"{wavefunction.shape = }")
 
         log.debug(f"All done!\n{wavefunction = }")
-        return wavefunction
+        log.debug(f"All done!\n{normed_wavefunction = }")
+        import pdb; pdb.set_trace()
+        return normed_wavefunction
 
 
 class FermiLayer(torch.nn.Module):
@@ -396,6 +428,8 @@ class FermiLayer(torch.nn.Module):
             IN:(20, 4) OUT: (32, 4)
         f_vector_length will be
             (3*IN_1 + 2*IN_2) ~ (3*20 + 2*4) ~ (60 + 8) ~ 68
+
+        So f_vector final dimension would be (batch, 10, 68)
         """
         if (self.n_up == 0) or (self.n_down == 0):
             # case with all electrons having same spin (i.e. no up spins or no down spins)
@@ -413,17 +447,20 @@ class FermiLayer(torch.nn.Module):
         self.b_vectors is a vector of vectors
 
         The V matrices will be of dimension
-            (10, (3*IN_1 + 2*IN_2), OUT_1)
+            (batch, 10, (3*IN_1 + 2*IN_2), OUT_1)
         The b vectors will be of dimension
-            (10, OUT_1)
+            (batch, 10, OUT_1)
 
         so for IN:(20, 4) OUT: (32, 4)
 
-            V - (10, (3*20 + 2*4), 32) ~ (10, (60 + 8), 32) ~ (10, 68, 32)
-            b - (10, 32)
+            V - (batch, 10, (3*20 + 2*4), 32)
+              ~ (batch, 10, (60 + 8), 32)
+              ~ (batch, 10, 68, 32)
+
+            b - (batch, 10, 32)
         """
-        self.v_matrices = p_func(self.n, f_vector_length, out_1_stream_dim)
-        self.b_vectors = p_func(self.n, out_1_stream_dim)
+        self.v_matrices = p_func(1, self.n, f_vector_length, out_1_stream_dim)
+        self.b_vectors = p_func(1, self.n, out_1_stream_dim)
 
         """ matrix and bias vector for each double stream's linear op applied to the f vector
             and yielding a vector of the output length
@@ -432,17 +469,17 @@ class FermiLayer(torch.nn.Module):
         self.c_vectors is a matrix of vectors
 
         The W matrices will be of dimension
-            (10, 10, IN_2, OUT_2)
+            (batch, 10, 10, IN_2, OUT_2)
         The c vectors will be of dimension
-            (10, 10, OUT_2)
+            (batch, 10, 10, OUT_2)
 
         so for IN:(20, 4) OUT: (32, 4)
 
-            W - (10, 10, 4, 4)
-            c - (10, 10, 4)
+            W - (batch, 10, 10, 4, 4)
+            c - (batch, 10, 10, 4)
         """
-        self.w_matrices = p_func(self.n, self.n, in_2_stream_dim, out_2_stream_dim)
-        self.c_vectors = p_func(self.n, self.n, out_2_stream_dim)
+        self.w_matrices = p_func(1, self.n, self.n, in_2_stream_dim, out_2_stream_dim)
+        self.c_vectors = p_func(1, self.n, self.n, out_2_stream_dim)
 
         log.debug(f"{self.v_matrices.shape = }")
         log.debug(f"{self.b_vectors.shape = }")
@@ -451,45 +488,39 @@ class FermiLayer(torch.nn.Module):
 
     def create_f_vectors(self, single_h, double_h):
         """ Create the f_vector: (h, g1▲, g1▼, g2▲, g2▼)  """
-        log.debug(f"input stream shapes:\n")
+        log.debug("\n")
+        log.debug(f"input stream shapes:")
         log.debug(f"{single_h.shape = }")
         log.debug(f"{double_h.shape = }")
 
         n_up = self.n_up  # number of up spin electrons
-        single_h_up, single_h_down = single_h[:n_up], single_h[n_up:]
-        double_h_ups, double_h_downs = double_h[:n_up, :, ...], double_h[n_up:, :, ...]
+        single_h_up, single_h_down = single_h[:, :n_up, ...], single_h[:, n_up:, ...]
+        double_h_ups, double_h_downs = double_h[:, :n_up, ...], double_h[:, n_up:, ...]
 
-        log.debug(f"up_down seperation of the streams:\n")
+        log.debug("\n")
+        log.debug(f"up_down seperation of the streams:")
         log.debug(f"{single_h_up.shape = }")
         log.debug(f"{single_h_down.shape = }")
         log.debug(f"{double_h_ups.shape = }")
         log.debug(f"{double_h_downs.shape = }")
 
-        n = len(single_h)  # number of electrons?
-
         # compute the means (g components)
-        summation_dim = 0  # (note that we should change this if we are broadcasting over batch_size)
+        summation_dim = 1  # (note that we should change this if we are broadcasting over batch_size)
         single_g_up = torch.mean(single_h_up, summation_dim, keepdim=True) if single_h_up.nelement() else torch.empty(0)
         single_g_down = torch.mean(single_h_down, summation_dim, keepdim=True) if single_h_down.nelement() else torch.empty(0)
-        double_g_ups = torch.mean(double_h_ups, summation_dim) if double_h_ups.nelement() else torch.empty(n, 0)
-        double_g_downs = torch.mean(double_h_downs, summation_dim) if double_h_downs.nelement() else torch.empty(n, 0)
+        double_g_ups = torch.mean(double_h_ups, summation_dim) if double_h_ups.nelement() else torch.empty(len(single_h), 0)
+        double_g_downs = torch.mean(double_h_downs, summation_dim) if double_h_downs.nelement() else torch.empty(len(single_h), 0)
 
-        log.debug(f"f vector sizes:\n")
+        dims = (1, self.n, 1)  # This should create a tuple (1, 10, 1) given `self.n` = 10
+
+        log.debug("\n")
+        log.debug(f"f vector sizes:")
         log.debug(f"{single_h.shape = }")
-        log.debug(f"{single_g_up.shape = }")
-        log.debug(f"{single_g_down.shape = }")
+        log.debug(f"{torch.tile(single_g_up, dims).shape = }")
+        log.debug(f"{torch.tile(single_g_down, dims).shape = }")
         log.debug(f"{double_g_ups.shape = }")
         log.debug(f"{double_g_downs.shape = }")
         log.debug(f"\n")
-
-        """ creating the tiling dimensions
-        This should create a tuple
-            (10, 1)
-        given `self.n` = 10
-        """
-        dims = (self.n, 1)
-        # dims = (self.n, 1)
-        dims = (n, 1)
 
         """ Since `single_h` will have dimensionality (10, 20)
         but `single_g_down` had dimensionality (1, 20)
@@ -501,7 +532,7 @@ class FermiLayer(torch.nn.Module):
             torch.tile(single_g_down, dims),
             double_g_ups,
             double_g_downs
-        ), axis=1).type(torch.FloatTensor)
+        ), axis=-1).type(torch.FloatTensor)
 
         return f_vectors
 
@@ -509,21 +540,23 @@ class FermiLayer(torch.nn.Module):
         """ x """
 
         # The V matrices will be of dimension
-        #     (10, (3*IN_1 + 2*IN_2), OUT_1)
+        #     (batch, 10, (3*IN_1 + 2*IN_2), OUT_1)
         # The b vectors will be of dimension
-        #     (10, OUT_1)
+        #     (batch, 10, OUT_1)
 
         # so for IN:(20, 4) OUT: (32, 4)
 
-        #     V - (10, (3*20 + 2*4), 32) ~ (10, (60 + 8), 32) ~ (10, 68, 32)
-        #     b - (10, 32)
+        #     V - (batch, 10, (3*20 + 2*4), 32)
+        #       ~ (batch, 10, (60 + 8), 32)
+        #       ~ (batch, 10, 68, 32)
+        #     b - (batch, 10, 32)
 
         log.debug(f"{f_vectors.shape = }")
         log.debug(f"{f_vectors.unsqueeze(-1).shape = }")
         log.debug(f"{self.v_matrices.shape = }")
-        log.debug(f"{torch.transpose(self.v_matrices, 1, 2).shape = }")
+        log.debug(f"{torch.transpose(self.v_matrices, -2, -1).shape = }")
 
-        """ f_vectors is size (10, 68) for methane
+        """ f_vectors is size (batch, 10, 68) for methane
         68 is:
             - 5*4 = 20 for single_h
             - 5*4 = 20 for single_g_up
@@ -534,19 +567,19 @@ class FermiLayer(torch.nn.Module):
         indexing like this:
             f_vectors.unsqueeze(-1)
         gives dimensionality
-            (10, 68, 1)
+            (batch, 10, 68, 1)
         """
 
-        # self.v_matrices is size (10, 68, 32) for methane
-        # torch.transpose(self.v_matrices, 1, 2) is size (10, 32, 68) for methane
+        # self.v_matrices is size (batch, 10, 68, 32) for methane
+        # torch.transpose(self.v_matrices, -2, -1) is size (batch, 10, 32, 68) for methane
 
         """ The matmul will be between
         f_vectors.unsqueeze(-1)
-            (10, 68, 1)
+            (batch, 10, 68, 1)
         self.v_matrices
-            (10, 32, 68)
+            (batch, 10, 32, 68)
         with output
-            (10, 32, 1)
+            (batch, 10, 32, 1)
         """
 
         # single_output = torch.tanh(torch.bmm(torch.transpose(self.v_matrices, 1, 2), f_vectors[:,:,None]) + self.b_vectors)  # Note: check dimensions order for torch.mul are correct??
@@ -555,17 +588,18 @@ class FermiLayer(torch.nn.Module):
             torch.squeeze(
                 # Note: check dimensions order for torch.mul are correct??
                 torch.matmul(
-                    torch.transpose(self.v_matrices, 1, 2),
+                    torch.transpose(self.v_matrices, -2, -1),
                     f_vectors.unsqueeze(-1)
                 ),
-                dim=2
+                dim=-1
             ) + self.b_vectors
         )
 
-        # W - (10, 10, 4, 4)
-        # c - (10, 10, 4)
+        # W - (batch, 10, 10, 4, 4)
+        # c - (batch, 10, 10, 4)
 
         # output[0] = np.tanh(torch.tensor([(self.v_matrices[i] @ f_vectors[i]) + self.b_vectors[i] for i in range(len(f_vectors))]))
+
         if single_stream_output.size() == single_h.size():
             # single_stream_output += single_h
             single_stream_output = single_stream_output + single_h
@@ -575,29 +609,31 @@ class FermiLayer(torch.nn.Module):
     def double_stream_output(self, f_vectors, double_h):
         """ x """
 
-        # double_output = torch.tanh(torch.mul(self.w_matrices, double_h) + self.c_vectors)#Note: check dimensions order for @ (np.matmul) are correct??
-        # Note: check dimensions order for torch.mul are correct??
+        log.debug("\n")  # spacing log for readability
+
         if self.w_matrices.size()[-1] == 0:
-            w_mats_size = self.w_matrices.size()
-            double_stream_output = torch.zeros(w_mats_size[0], w_mats_size[1], w_mats_size[-2])
+            batch_size = f_vectors.shape[0]
+            log.debug(f"{self.w_matrices.shape = }")
+            dim = (batch_size, *self.w_matrices.shape[1:])
+            double_stream_output = torch.zeros(dim)
             log.debug(f"{double_stream_output.shape = }")
 
         else:
             log.debug(f"{self.w_matrices.shape = }")
-            log.debug(f"{torch.flatten(self.w_matrices, end_dim=1).shape = }")
             log.debug(f"{double_h.shape = }")
             log.debug(f"{double_h.unsqueeze(-1).shape = }")
-            log.debug(f"{torch.flatten(double_h.unsqueeze(-1), end_dim=1).shape = }")
-            log.debug(f"{torch.flatten(self.c_vectors, end_dim=1).shape = }")
+            log.debug(f"{torch.matmul(self.w_matrices, double_h.unsqueeze(-1)).shape = }")
+            log.debug(f"{torch.matmul(self.w_matrices, double_h.unsqueeze(-1)).squeeze(-1).shape = }")
+            log.debug(f"{self.c_vectors.shape = }")
+            # log.debug(f"{torch.flatten(double_h.unsqueeze(-1), start_dim=1, end_dim=2).shape = }")
+            # log.debug(f"{torch.flatten(self.c_vectors, start_dim=1, end_dim=2).shape = }")
+            # log.debug(f"{self.c_vectors.flatten(start_dim=1, end_dim=2).shape = }")
 
             double_stream_output = torch.tanh(
-                torch.squeeze(
-                    torch.matmul(
-                        self.w_matrices,
-                        double_h.unsqueeze(-1)
-                    ),
-                    dim=3
-                ) + self.c_vectors
+                torch.matmul(
+                    self.w_matrices,
+                    double_h.unsqueeze(-1)
+                ).squeeze(-1) + self.c_vectors
             )
 
         # output[1] = np.tanh(torch.tensor([[(self.w_matrices[i][j] @ double_h[i][j]) + self.c_vectors[i][j] for j in range(len(double_h[0]))] for i in range(len(double_h))]))
@@ -612,10 +648,12 @@ class FermiLayer(torch.nn.Module):
         """ Propagate a layer """
 
         # flatten single_h from (batch_size, 10, 5, 4) -> (batch_size, 10, 20)
-        single_h = input_tensor[0].type(torch.FloatTensor).flatten(start_dim=1)
+        single_h = input_tensor[0].type(torch.FloatTensor)
+        log.debug(f"{single_h.shape = }")
 
         # double_h is (batch_size, 10, 10, 4)
         double_h = input_tensor[1].type(torch.FloatTensor)
+        log.debug(f"{double_h.shape = }")
 
         # build f: (h, g1▲, g1▼, g2▲, g2▼)
         f_vectors = self.create_f_vectors(single_h, double_h)
@@ -624,4 +662,5 @@ class FermiLayer(torch.nn.Module):
         single_stream_output = self.single_stream_output(f_vectors, single_h)
         double_stream_output = self.double_stream_output(f_vectors, double_h)
 
+        log.debug(f"layer_outputs: [{single_stream_output.shape}, {double_stream_output.shape}]\n")
         return [single_stream_output, double_stream_output]

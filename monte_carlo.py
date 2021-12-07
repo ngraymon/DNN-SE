@@ -101,31 +101,35 @@ class MonteCarlo():
         # when sampling
         # self.walker_shape = (batch_size, len(initial_offset))
         self.batch_size = batch_size
-        # self.walkers = np.zeros(shape=self.walker_shape, dtype=dtype)
 
         number_of_replicas = 1  # how many GPUs we are using
 
         shape = (number_of_replicas, batch_size)
         self.walkers = self._initial_random_states(shape)
-        self.net_multi = bool(len(self.walkers.shape) >= 3)
 
         # number of monte carlo steps to preform per epoch/network call
         self.nof_steps = nof_steps
 
         # how we analyze our mc progress
-        log.debug(f"{self.walkers.shape = }")
         self.psi = self.compute_psi(self.walkers)
+        log.debug(f"{self.walkers.shape = }")
         log.debug(f"{self.psi.shape = }")
+        log.debug(f"{self.psi = }")
 
-        assert not torch.isnan(self.psi), 'Initial wavefunction is nan'
+        assert not torch.isnan(self.psi).any(), f"Initial wavefunction contains nan's:\n{self.psi = }"
         self.rolling_accuracy = 0.0
 
         return
 
     def compute_psi(self, visible_nodes, *args, **kwargs):
         """ x """
-        kwargs.update({'multi': self.net_multi})
-        return self.net.forward(visible_nodes, *args, **kwargs)
+        ret = self.net.forward(visible_nodes, *args, **kwargs)
+        assert ret.requires_grad is True
+        print('a', ret, ret.shape)
+        # ret /= max(ret.clone())
+        # print(ret)
+        import pdb; pdb.set_trace()
+        return ret
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):
         """
@@ -183,8 +187,10 @@ class MonteCarlo():
         """
 
         # generate our uniform random number
-        u = torch.rand(size=self.walkers.shape)
-        log.debug(f"{'uniform random number at index 0':<30}{u[0, ...]}")
+        u = torch.rand(size=self.walkers.shape[:1])
+        log.debug(f"{u.shape = }")
+        log.debug(f"{acceptance_ratio.shape = }")
+        log.debug(f"{'uniform random number':<30}{u}")
 
         # test the condition
         accepted = u <= acceptance_ratio
@@ -214,7 +220,7 @@ class MonteCarlo():
         new_state = self.propose_new_state()
         # here ferminet seems to take the zeroth element of the array
         new_psi = self.compute_psi(new_state)
-        assert not torch.isnan(new_psi), 'New psi is nan'
+        assert not torch.isnan(new_psi).any(), f"New wavefunction contains nan's:\n{new_psi = }"
 
         # 3 - compute acceptance ratio
         acceptance_ratio = torch.squeeze(2 * (new_psi - cur_psi))
@@ -238,7 +244,7 @@ class MonteCarlo():
 
         The same process is followed for `cur_psi` and `new_psi`.
         """
-        cur_state = torch.where(accepted_bools, new_state, cur_state)
+        cur_state = torch.where(accepted_bools[:, None, None], new_state, cur_state)
         cur_psi = torch.where(accepted_bools, new_psi, cur_psi)
 
         # if we are storing our progress for analysis
