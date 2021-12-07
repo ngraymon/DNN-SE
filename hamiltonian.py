@@ -137,7 +137,8 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     # log.debug(f"{lapl_tensor.shape = }")
     # log.debug(f"{torch.sum(lapl_tensor, axis=0).shape = }")
     # import pdb; pdb.set_trace()
-    lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
+    # lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
+    lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
     log.debug(f"{lapl.shape = }")
     # import pdb; pdb.set_trace()
 
