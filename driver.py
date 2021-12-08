@@ -814,26 +814,53 @@ def prepare_parsed_arguments():
 def prepare_molecule_and_spins(pargs):
     """ x """
 
+    # convert to lower case
+    system_name = pargs.name.lower()
+
     # hydrogen (simplest test case)
-    if pargs.name == "hydrogen":
+    if system_name == "hydrogen":
         molecule, spins = system.Atom.build_basic_atom(symbol='H', charge=0)
 
-    elif pargs.name == "helium":
+    elif system_name == "helium":
         molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
 
+    elif system_name == "lithium":
+        molecule, spins = system.Atom.build_basic_atom(symbol='Li', charge=0)
+
+    elif system_name == "beryllium":
+        molecule, spins = system.Atom.build_basic_atom(symbol='Be', charge=0)
+
+    elif system_name == "boron":
+        molecule, spins = system.Atom.build_basic_atom(symbol='B', charge=0)
+
+    elif system_name == "carbon":
+        molecule, spins = system.Atom.build_basic_atom(symbol='C', charge=0)
+
+    elif system_name == "nitrogen":
+        molecule, spins = system.Atom.build_basic_atom(symbol='N', charge=0)
+
+    elif system_name == "oxygen":
+        molecule, spins = system.Atom.build_basic_atom(symbol='O', charge=0)
+
+    elif system_name == "flourine":
+        molecule, spins = system.Atom.build_basic_atom(symbol='F', charge=0)
+
+    elif system_name == "neon":
+        molecule, spins = system.Atom.build_basic_atom(symbol='Ne', charge=0)
+
     # for testing a simple system with _at least_ 2 atoms
-    elif pargs.name == "chain":
+    elif system_name == "chain":
         molecule, spins = system.hydrogen_chains(n=pargs.length, width=0.5)
 
     # for testing dimensionality of the walker tensor
-    elif pargs.name == "methane":
+    elif system_name == "methane":
         molecule, spins = system.methane()
 
-    elif pargs.name == "h4circle":
+    elif system_name == "h4circle":
         molecule, spins = system.h4_circle(r=3.2843, theta=90)
 
     else:
-        raise Exception(f"{pargs.name} is not a supported system yet")
+        raise Exception(f"{system_name} is not a supported system yet")
 
     print("The system input is as follows:")
     for i, m in enumerate(molecule):

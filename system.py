@@ -123,7 +123,7 @@ class Atom(_atom_namedtuple):
                 spin_polarization = 0
             else:
                 unpaired_e_dict = {1: 1, 2: 0, 13: 1, 14: 2, 15: 3, 16: 2, 17: 1, 18: 0}
-                d = elements.e_list[number - charge]
+                d = elements.e_list[number - 1 - charge]
                 gn = group_number(symbol, number, d['period'])
                 spin_polarization = unpaired_e_dict[gn]
 
