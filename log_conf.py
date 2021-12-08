@@ -10,6 +10,7 @@ CRITICAL 50
 ERROR    40
 WARNING  30
 INFO     20
+RUNTIME  15
 DEBUG    10
 NOTSET   0
 -----------------------------------------------------------
@@ -20,14 +21,16 @@ import logging
 # third party imports
 # local imports
 
+logging.RUNTIME = 15
+
 # how to add names/levels
-# logging.addLevelName(logging.NEW_LEVEL, "NEW_LEVEL")
+logging.addLevelName(logging.RUNTIME, "RUNTIME")
 
 
 class MyLogger(logging.Logger):
-    def newlevel(self, message, *args, **kwargs):
-        if self.isEnabledFor(logging.NEW_LEVEL):
-            self._log(logging.NEW_LEVEL, message, args, **kwargs)
+    def runtime(self, message, *args, **kwargs):
+        if self.isEnabledFor(logging.RUNTIME):
+            self._log(logging.RUNTIME, message, args, **kwargs)
 
 
 logging.setLoggerClass(MyLogger)
@@ -59,6 +62,10 @@ def setLevelWarning():
 
 def setLevelInfo():
     log.setLevel(logging.INFO)
+
+
+def setLevelRuntime():
+    log.setLevel(logging.RUNTIME)
 
 
 def setLevelDebug():
