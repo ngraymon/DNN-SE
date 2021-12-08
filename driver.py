@@ -26,7 +26,6 @@ import torch
 # local imports
 from flags import flags
 from log_conf import log, setLevelDebug, setLevelInfo
-import kfac
 import hamiltonian
 import system
 import fnn
