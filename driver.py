@@ -848,6 +848,18 @@ def prepare_molecule_and_spins(pargs):
     elif system_name == "neon":
         molecule, spins = system.Atom.build_basic_atom(symbol='Ne', charge=0)
 
+    elif system_name == "LiH".lower():
+        molecule, spins = system.diatomic('Li', 'H', 3.015, spins=None, charge=0)
+
+    elif system_name == "Li2".lower():
+        molecule, spins = system.diatomic('Li', 'Li', 5.051, spins=None, charge=0)
+
+    elif system_name == "CO".lower():
+        molecule, spins = system.diatomic('N', 'N', 2.173, spins=None, charge=0)
+
+    elif system_name == "N2".lower():
+        molecule, spins = system.diatomic('N', 'N', 2.068, spins=None, charge=0)
+
     # for testing a simple system with _at least_ 2 atoms
     elif system_name == "chain":
         molecule, spins = system.hydrogen_chains(n=pargs.length, width=0.5)
@@ -855,6 +867,17 @@ def prepare_molecule_and_spins(pargs):
     # for testing dimensionality of the walker tensor
     elif system_name == "methane":
         molecule, spins = system.methane()
+
+    # for testing dimensionality of the walker tensor
+    elif system_name == "ammonia":
+        molecule, spins = system.ammonia()
+
+    # for testing dimensionality of the walker tensor
+    elif system_name == "ethylene":
+        molecule, spins = system.ethylene()
+
+    elif system_name == "bicyclobutane".lower():
+        molecule, spins = system.bicyclobutane()
 
     elif system_name == "h4circle":
         molecule, spins = system.h4_circle(r=3.2843, theta=90)

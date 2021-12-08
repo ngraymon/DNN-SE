@@ -162,9 +162,19 @@ def hydrogen_chains(n, width, charge=0):
 def diatomic(symbol1, symbol2, bond_length, spins=None, charge=0, units='bohr'):
     """Return configuration for a diatomic molecule."""
     if spins is None:
-        atomic_number_1 = elements.SYMBOLS[symbol1].atomic_number
-        atomic_number_2 = elements.SYMBOLS[symbol2].atomic_number
-        total_charge = atomic_number_1 + atomic_number_2 - charge
+
+        for d in elements.e_list:
+            if symbol1 == d['symbol']:
+                number_1 = d['atomic_number']
+            if symbol2 == d['symbol']:
+                number_2 = d['atomic_number']
+        else:
+            print('fail')
+
+        assert isinstance(number_1, int)
+        assert isinstance(number_2, int)
+
+        total_charge = number_1 + number_2 - charge
 
         if total_charge % 2 == 0:
             spins = (total_charge // 2, total_charge // 2)
@@ -172,8 +182,8 @@ def diatomic(symbol1, symbol2, bond_length, spins=None, charge=0, units='bohr'):
             spins = ((total_charge + 1)// 2, (total_charge - 1) // 2)
 
     return [
-      Atom(symbol=symbol1, coords=(0.0, 0.0, bond_length/2.0), units=units),
-      Atom(symbol=symbol2, coords=(0.0, 0.0, -bond_length/2.0), units=units)
+      Atom(symbol=symbol1, number=number_1, coords=(0.0, 0.0, bond_length/2.0), charge=number_1),
+      Atom(symbol=symbol2, number=number_2, coords=(0.0, 0.0, -bond_length/2.0), charge=number_2)
     ], spins
 
 
@@ -196,16 +206,49 @@ def methane():
     ]
     spin_config = (5, 5)
 
+    return atom_list, spin_config
 
-def h4_circle(r, theta, units='bohr'):
-    """Return 4 hydrogen atoms arranged in a circle, a failure case of CCSD(T)."""
+
+def ammonia():
     atom_list = [
-        Atom(symbol='H', number=1, coords=(r*np.cos(theta), r*np.sin(theta), 0.0), charge=1),
-        Atom(symbol='H', number=1, coords=(-r*np.cos(theta), r*np.sin(theta), 0.0), charge=1),
-        Atom(symbol='H', number=1, coords=(r*np.cos(theta), -r*np.sin(theta), 0.0), charge=1),
-        Atom(symbol='H', number=1, coords=(-r*np.cos(theta), -r*np.sin(theta), 0.0), charge=1)
+        Atom(symbol='N', number=7, coords=(0.0, 0.0, 0.22013), charge=7),
+        Atom(symbol='H', number=1, coords=(0.0, 1.77583, -0.51364), charge=1),
+        Atom(symbol='H', number=1, coords=(1.53791, -0.88791, -0.51364), charge=1),
+        Atom(symbol='H', number=1, coords=(-1.53791, -0.88791, -0.51364), charge=1),
     ]
-    spin_config = (2, 2)
+    spin_config = (5, 5)
+
+    return atom_list, spin_config
+
+
+def ethylene():
+    atom_list = [
+        Atom(symbol='C', number=6, coords=(0.0, 0.0, 1.26135), charge=6),
+        Atom(symbol='C', number=6, coords=(0.0, 0.0, -1.26135), charge=6),
+        Atom(symbol='H', number=1, coords=(0.0, 1.74390, 2.33889), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, -1.74390, 2.33889), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, 1.74390, -2.33889), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, -1.74390, -2.33889), charge=1),
+    ]
+    spin_config = (8, 8)
+
+    return atom_list, spin_config
+
+
+def bicyclobutane():
+    atom_list = [
+        Atom(symbol='C', number=6, coords=(0.0, 2.13792, 0.58661), charge=6),
+        Atom(symbol='C', number=6, coords=(0.0, -2.13792, 0.58661), charge=6),
+        Atom(symbol='C', number=6, coords=(1.41342, 0.0, -0.58924), charge=6),
+        Atom(symbol='C', number=6, coords=(-1.41342, 0.0, -0.58924), charge=6),
+        Atom(symbol='H', number=1, coords=(0.0, 2.33765, 2.64110), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, 3.92566, -0.43023), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, -2.33765, 2.64110), charge=1),
+        Atom(symbol='H', number=1, coords=(0.0, -3.92566, -0.43023), charge=1),
+        Atom(symbol='H', number=1, coords=(2.67285, 0.0, -2.19514), charge=1),
+        Atom(symbol='H', number=1, coords=(-2.67285, 0.0, -2.19514), charge=1),
+    ]
+    spin_config = (15, 15)
 
     return atom_list, spin_config
 
