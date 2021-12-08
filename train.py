@@ -12,12 +12,11 @@ from log_conf import log
 # third party imports
 import torch
 from torch import optim
-from torch.autograd import grad_mode
-from torch.optim import optimizer
-from torch.optim.optimizer import Optimizer
+# from torch.autograd import grad_mode
+# from torch.optim import optimizer
+# from torch.optim.optimizer import Optimizer
 
 # local imports
-
 
 
 class Train():
@@ -40,26 +39,31 @@ class Train():
         self.clip_el = clip_el  # the factor applied to distance for clipping local energy
 
     def train_KFAC(self):
+        """ Not currently implemented """
         return 0
 
     def train(self, bool_KFAC=False, clipping=False):
+
         if bool_KFAC:
             self.train_KFAC()
 
-        losstot = []
-        phi_phisgn = [[], ]
+        loss_list = []
 
-        # creating the walkers...
-        last_time = time.time()#for epoch No. output
-        for i in range(self.param['epoch']):
-            #for epoch No. output:
+        # this list would be used for more complicated training that we did not implement
+        # phi_phisgn = [[], ]
+
+        last_time = time.time()  # for epoch No. output
+
+        for i in range(self.param['epoch']):  # training loop
+
             new_time = time.time()
-            if new_time - last_time > 5:#waits 5 seconds between outputs
+            if new_time - last_time > 5:  # waits 5 seconds between outputs
                 last_time = new_time + 0
-                log.info(f"Epoch: {i+1}\t / {self.param['epoch']}")
+                log.info(f"Epoch: ({i+1:<6d}\t / {self.param['epoch']:<6d})")
             #
 
-            self.net.zero_grad()
+            self.net.zero_grad()  # reset gradients
+
             # get wavefunction for each one of these configuration, creates the configurations for each electron
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
@@ -68,18 +72,21 @@ class Train():
                 warnings.simplefilter("ignore")
                 copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
 
+            # if the walkers contain nans then we should stop, training further is futile
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
             # from the Hamiltonian extract potential and kinetic energy
             kinetic = self.kinetic(phi, walkers, self.net).detach()
             potential = self.potential(walkers)
-            local_energy = kinetic + potential
 
-            # this is the "real" loss of the system, i.e the mean of the loss for that batch size
-            loss = torch.mean(local_energy)
+            local_energy = kinetic + potential  # what we want to minimize
+
+            # this is the "real" loss of the system
+            loss = torch.mean(local_energy)  # mean is preformed over the batch_size / replica_size
 
             # default for now
             if self.clip_el is None:
+
                 # here is the loss being passed into the backward pass since we have an explicit
                 # expression for the gradient of the loss
                 computed_loss = torch.mean((local_energy - loss) * copy_of_phi)
@@ -105,6 +112,8 @@ class Train():
             # compute the gradient w.r.t. the weights and update with ADAM
             computed_loss.backward(retain_graph=True)
             self.optimizer.step()
-            losstot.append(loss.item())
 
-        return losstot
+            # record our loss each epoch
+            loss_list.append(loss.item())
+
+        return loss_list

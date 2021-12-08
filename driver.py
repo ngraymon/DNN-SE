@@ -9,7 +9,7 @@ You can run it with
 
 # system imports
 import os
-from os.path import abspath, join, dirname, isdir
+from os.path import abspath, join, isdir
 import sys
 import copy
 from datetime import datetime as dt
@@ -18,11 +18,10 @@ import time
 from types import SimpleNamespace
 from typing import Optional, Sequence
 
+# system imports
 # third party imports
 import numpy as np
-# from numpy.random import default_rng
 import torch
-
 
 # local imports
 from flags import flags
@@ -34,7 +33,7 @@ import fnn
 import elements
 from train import Train
 from monte_carlo import MonteCarlo
-# import plot_helium
+import plotting
 # import quantum_mechanics as QM
 
 
@@ -160,11 +159,11 @@ def greedy_guess_electron_spins(temp_atom_list, absolute_spin_polarity):
 
 
 def heuristically_set_initial_electron_positions(
-    assigned_spin_polarity,
-    absolute_spin_polarity,
-    spin_configuration_list
-    ):
-    """ x """
+        assigned_spin_polarity,
+        absolute_spin_polarity,
+        spin_configuration_list
+        ):
+    """ Attempt to guess at spin up/down assignments """
 
     while assigned_spin_polarity != absolute_spin_polarity:
 
@@ -400,29 +399,29 @@ def generate_electron_position_vector(molecule, electron_spec):
 # --------------------------- configuration functions ----------------------- #
 
 
-def prepare_file_paths():
-    """ x """
+def prepare_file_paths(pargs):
+    """ Attempt to create any necessary directories """
 
     try:
-        if not isdir(flags.result_folder):
-            os.makedirs(flags.result_folder, exist_ok=True)
+        if not isdir(pargs.res_path):
+            os.makedirs(pargs.res_path, exist_ok=True)
     except Exception as e:
         print(
-            f"Failed to create results folder at {flags.result_folder}\n"
+            f"Failed to create results folder at {pargs.res_path}\n"
             "Is there an issue with the OS and/or file system?"
         )
         raise e
 
     time = dt.now().strftime("%b_%d_%Hh_%Mm_%Ss")
 
-    result_path = join(flags.result_folder, f'results_{time}')
+    result_path = join(pargs.res_path, f'results_{time}')
 
     try:
         if not isdir(result_path):
             os.makedirs(result_path, exist_ok=True)
     except Exception as e:
         print(
-            f"Failed to create results folder at {flags.result_folder}\n"
+            f"Failed to create results folder at {pargs.res_path}\n"
             "Is there an issue with the OS and/or file system?"
         )
         raise e
@@ -430,17 +429,19 @@ def prepare_file_paths():
     return result_path
 
 
-def prepare_system(result_path):
-    """ x """
+def prepare_system(pargs, results_path):
+    """ Save the command line arguments and do any final preparations """
 
-    path = join(result_path, flags.cmdline_file)
+    path = join(abspath(results_path), flags.cmdline_file)
 
-    data = ' '.join(sys.argv[1:]) + '\n'
+    data = f"command line input:\n{tab}" + ' '.join(sys.argv) + '\n'
+    data += f"\nuser provided arguments:\n{tab}{pargs}"
 
     # save command line arguments
     with open(path, 'w') as f:
         f.write(data)
 
+    # any other preprocessing we need to do (none at the moment)
     if flags.system_type == 'molecule':
         args = None
 
@@ -546,7 +547,7 @@ def prepare_mcmc_configuration(*args):
 
 def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     """ create the Train object """
-    # param = {'lr': 0.01, 'epoch': 100}
+
     param = {'lr': flags.learning_rate, 'epoch': flags.iterations}
 
     # the current implementation
@@ -557,13 +558,11 @@ def prepare_trainer(network, mcmc, hamiltonian_operators, hartree_fock=None):
     return Train(network, mcmc, hamiltonian_operators, hartree_fock, param)
 
 
-def prepare_scf(molecule, spin_config, config, using_scf_flag=False):
+def prepare_scf(molecule, spin_config, config):
     """ create the SCF object
     This currently doesn't do anything as we don't have a SCF module
     implemented yet.
     """
-    if not using_scf_flag:
-        return None
 
     scf_kwargs = {
         'nof_electrons': sum(spin_config),
@@ -599,12 +598,8 @@ def prepare_network(molecule, nof_electrons, spin_config):
     # wrap that in a pytorch tensor (necessary for backpropagation of the network)
     nuclear_positions[:] = torch.tensor(temporary_arr)
 
-    # dummy electron positions for now
-    electron_positions = torch.zeros((sum(spin_config), 3))
-
     return fnn.FermiNet(
         spin_config,
-        electron_positions,
         nuclear_positions,
         flags.hidden_units,
         num_determinants=flags.determinants
@@ -629,7 +624,7 @@ def prepare_mean_array(config, molecule, spin_config):
 
     # if no offsets were provided then we need to calculate them
     if init_offset is None:
-        log.info("Attempting to generate new electron positions")
+        log.debug("Attempting to generate new electron positions")
         init_offset = generate_electron_position_vector(molecule, spin_config)
         return init_offset
 
@@ -677,7 +672,7 @@ def prepare_mcmc(config, network_object, init_offset, precision):
 # ------------------------------ main function ------------------------------ #
 
 
-def main(molecule, spin_config):
+def main(molecule, spin_config, pargs):
     """ Wrapper function for Train.train().
 
     Handles all the finicky details of setting up objects/classes.
@@ -685,19 +680,22 @@ def main(molecule, spin_config):
     Handles different cases (multi-gpu/single-gpu/cpu)
     """
 
-    print(f"Running on device: {flags.device}")
+    using_scf_flag = False
+    timing_flag = True
+
+    log.info(f"Running on device: {flags.device}")
 
     if flags.deterministic:
         # set random seed to flags.deterministic_seed
         log.info('Running in deterministic mode. Performance will be reduced.')
 
-    """ !NOTE! - so far these don't really do anything
-    they are more necessary in the event when we need to do multi-gpu stuff
-    and/or if we are having more configurational parameters
-    """
+    result_path = prepare_file_paths(pargs)
+    args = prepare_system(pargs, result_path)
 
-    result_path = prepare_file_paths()
-    args = prepare_system(result_path)
+    """ Not all of these functions do meaningful work.
+    This is because we only support a basic implementation of the FNN.
+    We don't have fancy features such as KFAC, pre-training, burn in etc..
+    """
     network_config = prepare_nework_configuration(args)
     pretraining_config = prepare_pretraining_configuration(args)
     optimizaiton_config = prepare_optimizer_configuration(args)
@@ -705,22 +703,20 @@ def main(molecule, spin_config):
     mcmc_config = prepare_mcmc_configuration()
     log.debug("Finished preparing the config parameters")
 
-    # some other keyword arguments?
-    kwargs = {}
     nof_electrons = sum(spin_config)
-    # probably want to use pytorch floats?
     precision = torch.float64 if flags.double_precision else torch.float32
-
-    # temporary work around until we have scf implemented
-    using_scf_flag = False
 
     # create the network object
     network_object = prepare_network(molecule, nof_electrons, spin_config).to(flags.device)
     log.debug("Finished initializing the Network object")
 
-    # currently only returns `None`
-    scf_object = prepare_scf(molecule, spin_config, pretraining_config, using_scf_flag=False)
-    log.debug("Finished initializing the SCF object")
+    """ This part of the code is a template/example.
+    We don't actually do any pre-training with HF orbitals (not implemented yet),
+    This is where it would go if we implemented it.
+    """
+    if using_scf_flag:
+        scf_object = prepare_scf(molecule, spin_config, pretraining_config)
+        log.debug("Finished initializing the SCF object")
 
     # create the Hamiltonian operators
     hamiltonian_operators = prepare_hamiltonian(molecule, nof_electrons)
@@ -733,9 +729,10 @@ def main(molecule, spin_config):
     mcmc_object = prepare_mcmc(mcmc_config, network_object, init_means, precision)
     log.debug("Finished initializing the MCMC object")
 
-    # we might do this in the future
-    # (i believe this part of the code was to generate HF data to compare to)
-    # (possibly for burn in...? still unclear)
+    """ This part of the code is a template/example.
+    We don't actually do any pre-training with HF orbitals (not implemented yet),
+    This is where it would go if we implemented it.
+    """
     if using_scf_flag:
         hf_object = prepare_mcmc(mcmc_config, scf_object, init_means, precision)
     else:
@@ -750,61 +747,52 @@ def main(molecule, spin_config):
 
     # what we've all been waiting for, the ACTUAL training!
     log.debug("Attempting to start the training")
-    train_start_time = time.time()
-    loss_storage = trainer_object.train(
-        # network_configuration,
-        # optimizaiton_configuration,
-        # kfac_configuration,
-        # mcmc_configuration,
-        **kwargs
-    )
-    train_stop_time = time.time()
-    log.info("Training completed\t [{0:.4f} s]".format(train_stop_time - train_start_time))
+
+    if timing_flag:
+        train_start_time = time.time()
+
+    loss_storage = trainer_object.train()
+
+    if timing_flag:
+        train_stop_time = time.time()
+        run_time = train_stop_time - train_start_time
+        log.info(f"Training completed\t [{run_time:.4f} s]")
+
     # Save:
     network_object.save(result_path)
-    log.info("Model Saved.")
+
     with open(join(result_path, "time.txt"), 'w') as f:
         f.write(str(train_stop_time - train_start_time))
-        f.close()
+
     with open(join(result_path, "loss_storage.txt"), 'w') as f:
         f.write(str(loss_storage))
-        f.close()
 
-    # plot the training progress
-    # plotting.plot_training_metrics(loss_storage, name)
+    print(f"\nSuccess!    Final loss: {loss_storage[-1]:8.6f} after {pargs.epochs} epochs")
 
-    print("Success!")
-
-    return loss_storage
+    return network_object, loss_storage
 
 
-def simple_plotting(loss_storage):
+def simple_plotting(network, loss_storage):
     """ x """
-    import matplotlib.pyplot as plt
-    plt.plot(loss_storage)
-    plt.show()
-    # plotting.plot_helium(network_object, name)
+    plotting.plot_helium(network)
+    plotting.plot_loss(loss_storage)
 
 
 def prepare_parsed_arguments():
     """ Wrapper for argparser setup """
 
-    # setLevelDebug()
-
-    # use input to specify system for debugging purposes
-    # name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'
-    # number = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-
-    # formatclass = argparse.RawDescriptionHelpFormatter
-    # formatclass = argparse.RawTextHelpFormatter
-    formatclass = argparse.ArgumentDefaultsHelpFormatter  # I liked this the best
-    # formatclass = argparse.MetavarTypeHelpFormatter
+    formatclass = [
+        argparse.RawDescriptionHelpFormatter,
+        argparse.RawTextHelpFormatter,
+        argparse.ArgumentDefaultsHelpFormatter,  # preferred this one
+        argparse.MetavarTypeHelpFormatter,
+    ][2]
 
     # parse the arguments
-    parser = argparse.ArgumentParser(description="Fermi net 2.0?", formatter_class=formatclass)
+    parser = argparse.ArgumentParser(description="Fermi Neural Network (FNN)", formatter_class=formatclass)
     parser.add_argument('--name', type=str, default='hydrogen', metavar='system name', help='the name of the QM system to evaluate')
     parser.add_argument('--length', type=int, default=1, metavar='length of chain', help='if using a hydrogen chain, how long the chain is')
-    parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for json attributes')
+    parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for training parameters')
     parser.add_argument('-res-path', type=str, default=flags.result_folder, metavar='results_dir', help='path to save the plots at')
     parser.add_argument('-n', type=int, default=flags.batch_size, metavar='number_of_replicas', help='number of replica state vectors for mc to propagate')
     parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity (set to 2 for full debugging)')
@@ -851,7 +839,7 @@ if __name__ == '__main__':
     # process the users input
     pargs = prepare_parsed_arguments()
 
-    #the defaults in the argparse are the flags values, so if the args are omitted it follows flags.py
+    # the defaults in the argparse are the flags values, so if the args are omitted it follows flags.py
     flags.device = pargs.device
     flags.iterations = pargs.epochs
     flags.learning_rate = pargs.lr
@@ -862,7 +850,7 @@ if __name__ == '__main__':
     # prepare the system
     molecule, spins = prepare_molecule_and_spins(pargs)
 
-    loss_storage = main(molecule, spins)
+    network, loss_storage = main(molecule, spins, pargs)
 
-    if pargs.plot > 0: 
-        simple_plotting(loss_storage)
+    if pargs.plot > 0:
+        simple_plotting(network, loss_storage)
