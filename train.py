@@ -83,6 +83,7 @@ class Train():
 
             # this is the "real" loss of the system
             loss = torch.mean(local_energy)  # mean is preformed over the batch_size / replica_size
+            log.runtime(f"Loss for epoch {i}: {loss = }")
 
             # default for now
             if self.clip_el is None:

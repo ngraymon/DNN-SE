@@ -25,7 +25,7 @@ import torch
 
 # local imports
 from flags import flags
-from log_conf import log, setLevelDebug, setLevelInfo
+from log_conf import log, setLevelDebug, setLevelRuntime, setLevelInfo
 import hamiltonian
 import system
 import fnn
@@ -802,7 +802,7 @@ def prepare_parsed_arguments():
     parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for training parameters')
     parser.add_argument('-res-path', type=str, default=flags.result_folder, metavar='results_dir', help='path to save the plots at')
     parser.add_argument('-n', type=int, default=flags.batch_size, metavar='number_of_replicas', help='number of replica state vectors for mc to propagate')
-    parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity (set to 2 for full debugging)')
+    parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity (set to 2 for runtime loss values and 3 for full debugging)')
     parser.add_argument('-device', type=str, default=flags.device, metavar='device_name', help='specify a specific device for PyTorch to use')
     parser.add_argument('-epochs', type=int, default=flags.iterations, metavar='num_epochs', help='number of epochs to run for')
     parser.add_argument('-lr', type=float, default=flags.learning_rate, metavar='learning_rate', help='learning rate for the optimiser')
@@ -854,6 +854,8 @@ if __name__ == '__main__':
     flags.learning_rate = pargs.lr
 
     if pargs.v == 2:
+        setLevelRuntime()
+    if pargs.v == 3:
         setLevelDebug()
 
     # prepare the system
