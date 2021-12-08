@@ -5,7 +5,24 @@ This projects goal is to replicate the algorithm and experiments defined in
 The FermiNet is used as a replacement for the trail wavefunction that is feed 
 into a montie carlo to find the ground state energy of the system.
 
-## How to run 
+## Running The FermiNet
+To run and train the FermiNet, use the 'driver.py' file, run
+'''sh
+python driver.py --name NAME --length LENGTH -- param PARAM.json -res-path RESULT PATH -n N -v V
+'''
+for more information on the arguments use,
+'''sh
+python driver.py --h
+'''
+If arguments are not provided the default values for the arguments are as follows,
+'''
+--name hydrogen
+--length 1
+--param param.json
+-res-path results
+-n 12
+-v 1
+'''
 
 ## Contributors
 * Andrew Francey
