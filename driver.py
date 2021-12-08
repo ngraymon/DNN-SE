@@ -8,11 +8,12 @@ You can run it with
 """
 
 # system imports
-import copy
 import os
 from os.path import abspath, join, dirname, isdir
 import sys
+import copy
 from datetime import datetime as dt
+import argparse
 import time
 from types import SimpleNamespace
 from typing import Optional, Sequence
@@ -698,6 +699,7 @@ def main(molecule, spin_config):
     they are more necessary in the event when we need to do multi-gpu stuff
     and/or if we are having more configurational parameters
     """
+
     result_path = prepare_file_paths()
     args = prepare_system(result_path)
     network_config = prepare_nework_configuration(args)
@@ -713,6 +715,7 @@ def main(molecule, spin_config):
     # probably want to use pytorch floats?
     precision = torch.float64 if flags.double_precision else torch.float32
 
+    import pdb; pdb.set_trace()
     # temporary work around until we have scf implemented
     using_scf_flag = False
 
@@ -804,40 +807,37 @@ def prepare_parsed_arguments():
 
     # parse the arguments
     parser = argparse.ArgumentParser(description="Variational auto-encoder (VAE)", formatter_class=formatclass)
-    parser.add_argument('--input', type=str, default='data/even_mnist.csv', metavar='input.csv', help='training data file')
+    parser.add_argument('--name', type=str, default='hydrogen', metavar='system name', help='the name of the QM system to evaluate')
+    parser.add_argument('--length', type=int, default=1, metavar='length of chain', help='if using a hydrogen chain, how long the chain is')
     parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for json attributes')
     parser.add_argument('-res-path', type=str, default='results', metavar='results_dir', help='path to save the plots at')
-    parser.add_argument('-n', type=int, default=100, metavar='N_DIGIT_SAMPLES', help='number of digit sample images to generate')
-    parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity')
+    parser.add_argument('-n', type=int, default=12, metavar='number_of_replicas', help='number of replica state vectors for mc to propagate')
+    parser.add_argument('-v', type=int, default=1, metavar='N', help='verbosity (set to 2 for full debugging)')
 
     return parser.parse_args()
 
 
-def prepare_system(pargs):
+def prepare_molecule_and_spins(pargs):
     """ x """
 
-    # use input to specify system for debugging purposes
-    # name = str(sys.argv[1]) if len(sys.argv) > 1 else 'hydrogen'
-    # number = int(sys.argv[2]) if len(sys.argv) > 2 else 1
-
     # hydrogen (simplest test case)
-    if name == "hydrogen":
+    if pargs.name == "hydrogen":
         molecule, spins = system.Atom.build_basic_atom(symbol='H', charge=0)
 
     # for testing a simple system with _at least_ 2 atoms
-    elif name == "chain":
-        molecule, spins = system.hydrogen_chains(n=number, width=0.5)
+    elif pargs.name == "chain":
+        molecule, spins = system.hydrogen_chains(n=pargs.length, width=0.5)
 
     # for testing dimensionality of the walker tensor
-    elif name == "methane":
+    elif pargs.name == "methane":
         molecule, spins = system.methane()
 
-    elif name == "helium":
+    elif pargs.name == "helium":
         raise Exception('Not supported yet')
         molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
 
     else:
-        raise Exception(f"{sys.argv[1]} is not a supported system yet")
+        raise Exception(f"{pargs.name} is not a supported system yet")
 
     print("The system input is as follows:")
     for i, m in enumerate(molecule):
@@ -849,15 +849,16 @@ def prepare_system(pargs):
 
 if __name__ == '__main__':
 
-    setLevelDebug()
-
     # process the users input
     pargs = prepare_parsed_arguments()
 
+    if pargs.v == 2:
+        setLevelDebug()
+
     # prepare the system
-    molecule, spins = prepare_system(pargs)
+    molecule, spins = prepare_molecule_and_spins(pargs)
 
     loss_storage = main(molecule, spins)
 
-if False:  # make this an argparse parameter
-    simple_plotting(loss_storage)
+    if False:  # make this an argparse parameter
+        simple_plotting(loss_storage)
