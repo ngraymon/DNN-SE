@@ -850,6 +850,7 @@ if __name__ == '__main__':
     # process the users input
     pargs = prepare_parsed_arguments()
 
+    #the defaults in the argparse are the flags values, so if the args are omitted it follows flags.py
     flags.device = pargs.device
     flags.iterations = pargs.epochs
     flags.learning_rate = pargs.lr
