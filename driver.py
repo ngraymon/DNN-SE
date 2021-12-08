@@ -688,6 +688,8 @@ def main(molecule, spin_config):
     Handles different cases (multi-gpu/single-gpu/cpu)
     """
 
+    print(f"Running on device: {flags.device}")
+
     if flags.deterministic:
         # set random seed to flags.deterministic_seed
         log.info('Running in deterministic mode. Performance will be reduced.')
