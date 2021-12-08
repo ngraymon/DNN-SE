@@ -41,9 +41,9 @@ flags.pretrain_iterations = 1000  # the iterations over which the network is pre
 flags.pretrain_basis = 'sto-3g'   # To do with PySCF and using the Hartree-Fock calculation
 
 # optimisation flags
-flags.iterations = 100000  # number of iterations
+flags.iterations = 1000  # number of iterations
 flags.clip_el = 5.0  # the scale at with to clip local energy????
-flags.learning_rate = 1e-4  # learning rate
+flags.learning_rate = 1e-3  # learning rate
 flags.learning_rate_decay = 1.0  # exponent of learning rate decay
                                  # can be changed to include exponential i.e. 1E1
 flags.learning_rate_delay = 10000.0  # the scale of the rate of decay
