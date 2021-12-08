@@ -51,8 +51,6 @@ class FermiNet(torch.nn.Module):
         # as layers that are not connected have a weight of zero
         self.layer_dimensions[-1][-1] = 0
 
-        # import pdb; pdb.set_trace()
-
         self._initialize_network_layers(spin_config, self.layer_dimensions)
 
         # we don't need to do this until we actually are processing input??
@@ -177,7 +175,6 @@ class FermiNet(torch.nn.Module):
         log.debug(f"{norm_ee_vectors.shape = }")
         # for i in range(7):
         #     log.debug(f"\n{self.ee_vectors[i] = }")
-        #     import pdb; pdb.set_trace()
 
         # assert not torch.isclose(norm_ee_vectors, torch.zeros_like(norm_ee_vectors)).any(), 'oh no were fucked'
         # log.debug(f"{norm_ee_vectors = }")
@@ -385,7 +382,6 @@ class FermiNet(torch.nn.Module):
 
         log.debug(f"All done!\n{wavefunction = }")
         # log.debug(f"All done!\n{normed_wavefunction = }")
-        # import pdb; pdb.set_trace()
         return wavefunction
 
 

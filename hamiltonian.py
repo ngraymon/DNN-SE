@@ -66,13 +66,10 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
-    # import pdb; pdb.set_trace()
-
     if not using_hessian:
         # log.debug(f"\n{df = }")
         # df[0] = df[1]
         # log.debug(f"\n{df = }")
-        # import pdb; pdb.set_trace()
 
         # loop over each psi_i
         # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
@@ -83,7 +80,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
             # log.debug(f"{x = }")
             # log.debug(f"{df[..., i] = }")
             # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
-            # import pdb; pdb.set_trace()
 
             input_df = torch.unsqueeze(df[..., i], -1)
 
@@ -101,11 +97,9 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
             lapl_elem = df2[..., i]
             # log.debug(f"{lapl_elem.shape = }")
             lapl_tensor.append(lapl_elem)
-            # import pdb; pdb.set_trace()
 
         log.debug(f"{len(lapl_tensor) = }")
         log.debug(f"{lapl_tensor[0].shape = }")
-        # import pdb; pdb.set_trace()
         lapl_tensor = torch.stack(lapl_tensor)
         log.debug(f"a")
 
@@ -128,17 +122,14 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
                 lapl_tensor = torch.diagonal(hess)
                 assert (lapl_tensor != float('nan')).all(), 'nans in the hessian'
                 log.debug(f"{lapl_tensor = }")
-                # import pdb; pdb.set_trace()
 
 
     # log.debug(f"{lapl_tensor = }")
     # log.debug(f"{lapl_tensor.shape = }")
     # log.debug(f"{torch.sum(lapl_tensor, axis=0).shape = }")
-    # import pdb; pdb.set_trace()
     # lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
     lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
     log.debug(f"{lapl.shape = }")
-    # import pdb; pdb.set_trace()
 
     return -0.5*torch.unsqueeze(lapl, -1)
 
@@ -303,7 +294,6 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
         log.debug(f"{electronic_potential(e_positions).shape = }")
         log.debug(f"{nuclear_potential(e_positions).shape = }")
-        # import pdb; pdb.set_trace()
 
         return (
             nuclear_potential(e_positions)

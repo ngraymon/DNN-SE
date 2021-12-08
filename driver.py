@@ -714,7 +714,6 @@ def main(molecule, spin_config):
     # probably want to use pytorch floats?
     precision = torch.float64 if flags.double_precision else torch.float32
 
-    import pdb; pdb.set_trace()
     # temporary work around until we have scf implemented
     using_scf_flag = False
 
