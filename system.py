@@ -196,6 +196,8 @@ def methane():
     ]
     spin_config = (5, 5)
 
+    return atom_list, spin_config
+
 
 def h4_circle(r, theta, units='bohr'):
     """Return 4 hydrogen atoms arranged in a circle, a failure case of CCSD(T)."""
