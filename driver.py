@@ -855,7 +855,7 @@ def prepare_molecule_and_spins(pargs):
         molecule, spins = system.diatomic('Li', 'Li', 5.051, spins=None, charge=0)
 
     elif system_name == "CO".lower():
-        molecule, spins = system.diatomic('N', 'N', 2.173, spins=None, charge=0)
+        molecule, spins = system.diatomic('C', 'O', 2.173, spins=None, charge=0)
 
     elif system_name == "N2".lower():
         molecule, spins = system.diatomic('N', 'N', 2.068, spins=None, charge=0)
