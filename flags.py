@@ -54,7 +54,7 @@ flags.learning_rate_delay = 10000.0  # the scale of the rate of decay
 # Flags for KFAC
 """KFAC isn't implemented at the moment but if it is
 these are the parameters, ignore if not using KFAC"""
-"""Need to implement initial flags for ADAM if using that"""
+
 
 flags.use_kfac = False
 flags.kfac_invert_every = 1
@@ -90,8 +90,7 @@ flags.system_angle = np.pi/4.0  # Angle from the x-axis for the hydrogen circle
 
 
 #  flags for logging
-"""This is to do with saving and logging results. More flags maybe
-required depending on how this is implemented"""
+"""This is to do with saving and logging results"""
 flags.deterministic = False
 flags.result_folder = abspath(join(dirname(__file__), 'results'))  # where and what the results folder is located and named
 flags.stats_frequency = 1           # iterations between stat logging
@@ -138,7 +137,7 @@ flags.xs = None
 
 # flags for the network architecture
 
-# we will be running ferminet exclusively I believe but here is where different networks would be chosen
+# we will be running ferminet exclusively but here is where different networks would be chosen
 flags.network_architecture = 'ferminet'
 
 """ The number of hidden units in each layer of the network
@@ -164,7 +163,7 @@ flags.jastrow_een = False
 # plotting flags
 flags.n_step_plot = 40
 flags.plot_path = 'plots/'
-"""There are flags for debugging, do we need these?"""
+
 
 
 #  -----------------------------
@@ -186,9 +185,6 @@ original_flags.learning_rate_decay = 1.0  # exponent of learning rate decay
 original_flags.learning_rate_delay = 10000.0  # the scale of the rate of decay
 
 # original_flags for KFAC
-"""KFAC isn't implemented at the moment but if it is
-these are the parameters, ignore if not using KFAC"""
-"""Need to impliment inital original_flags for ADAM if using that."""
 
 original_flags.use_kfac = False
 original_flags.kfac_invert_every = 1
@@ -213,8 +209,6 @@ original_flags.system = "H"     # We will only be working with atoms so use the 
                                 # if "hn" the number of atoms in the hydrogen chain
 original_flags.units = "bohr"  # the input units of the system.
 
-"""are we going to be using diatomics, hydrogen chains and hydrogen circles
-if we are then these are the original_flags relating to these systems, if not simply ignore"""
 
 original_flags.system_separation = 0.0  # for the hydrogen chain and diatomics, this is the separation between nuclei
                                         # for Hydrogen circles, this is the radius of the circle
@@ -223,12 +217,11 @@ original_flags.system_angle = np.pi/4.0  # Angle from the x-axis for the hydroge
 
 
 #  original_flags for logging
-"""This is to do with saving and logging results. More original_flags maybe
-required depending on how this is implemented"""
+"""This is to do with saving and logging results"""
 original_flags.deterministic = False
 original_flags.result_folder = abspath(join(dirname(__file__), 'results'))  # where and what the results folder is located and named
 original_flags.stats_frequency = 1  # iterations between stat logging
-original_flags.save_frequency = 10.0  # time () between saving network parameters
+original_flags.save_frequency = 10.0  # time between saving network parameters
 original_flags.log_walkers = False  # whether to log walker values after every iteration. Comes with high data usage warning
 original_flags.log_local_energies = False  # whether to log all local energies for each walker at each step
 original_flags.log_wavefunction = False  # the same as above but for the wavefunction instead
