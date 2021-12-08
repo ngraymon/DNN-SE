@@ -771,13 +771,18 @@ def main(molecule, spin_config, pargs):
     return network_object, loss_storage
 
 
-def simple_plotting(pargs, network, loss_storage):
+def simple_plotting(pargs, network, loss_storage, molecule, spin_config):
     """ x """
 
     plotting.plot_loss(pargs.res_path, loss_storage)
 
     if pargs.name == 'helium':
         plotting.plot_helium(pargs.res_path, network)
+
+    if pargs.name == 'h4circle':
+        molecule, spin_config
+        kinetic, potential = prepare_hamiltonian(molecule, sum(spin_config))
+        plotting.plot_h4_circle(pargs.res_path, kinetic, potential, network)
 
 
 def prepare_parsed_arguments():
@@ -813,6 +818,9 @@ def prepare_molecule_and_spins(pargs):
     if pargs.name == "hydrogen":
         molecule, spins = system.Atom.build_basic_atom(symbol='H', charge=0)
 
+    elif pargs.name == "helium":
+        molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
+
     # for testing a simple system with _at least_ 2 atoms
     elif pargs.name == "chain":
         molecule, spins = system.hydrogen_chains(n=pargs.length, width=0.5)
@@ -821,8 +829,8 @@ def prepare_molecule_and_spins(pargs):
     elif pargs.name == "methane":
         molecule, spins = system.methane()
 
-    elif pargs.name == "helium":
-        molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
+    elif pargs.name == "h4circle":
+        molecule, spins = system.h4_circle(r=3.2843, theta=90)
 
     else:
         raise Exception(f"{pargs.name} is not a supported system yet")
@@ -854,4 +862,4 @@ if __name__ == '__main__':
     network, loss_storage = main(molecule, spins, pargs)
 
     if pargs.plot > 0:
-        simple_plotting(pargs, network, loss_storage)
+        simple_plotting(pargs, network, loss_storage, molecule, spins)

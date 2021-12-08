@@ -87,6 +87,67 @@ def plot_helium(root_path, network, use_latex=False):
     plt.savefig(strFile)
 
 
+def plot_h4_circle(root_path, kinetic_fn, potential_fn, network, use_latex=False):
+    """ Plot the h4 wavefunction over a range of bond angles """
+
+    plt.rcParams['text.usetex'] = use_latex
+
+    plotting_density = flags.plotting_density
+
+    plot_path = join(root_path, flags.plot_path)
+
+    try_to_make_directory(plot_path)  # create directory if it doesn't exist
+
+    """ fix the first electron for the Helium atom and vary the second
+    for example:
+        (0.5, 0,0) a_0
+        (x, 0, 0) a_0, with x=linespace(-1,1,20)
+        (0.5 cosθ, 0.5 sinθ, 0) a_0
+    """
+
+    R = 3.2843  # bohr
+
+    x_values = np.linspace(85.0, 95.0, plotting_density)
+
+    positions = np.array([
+        [
+            [R*np.cos(theta), R*np.sin(theta), 0.0],
+            [-R*np.cos(theta), R*np.sin(theta), 0.0],
+            [R*np.cos(theta), -R*np.sin(theta), 0.0],
+            [-R*np.cos(theta), -R*np.sin(theta), 0.0],
+        ]
+        for theta in np.deg2rad(x_values)
+    ])
+
+    positions = torch.tensor(positions, requires_grad=True)
+
+    phi = network.forward(positions)
+    print(phi.requires_grad)
+
+    kinetic = kinetic_fn(phi, positions, network).detach()
+    potential = potential_fn(positions).detach()
+
+    local_energy = kinetic + potential  # what we want to minimize
+
+    fig, ax = plt.subplots(1)
+    # fig.suptitle('Wave function for helium atom')
+    fig.tight_layout()
+
+    # Make your plot, set your axes labels
+
+    ax.plot(x_values, local_energy*0.529177249)
+    ax.set_xlabel(r'$\theta (degrees)$')
+    ax.set_ylabel(r' $Energy (a.u.)$')
+
+    strFile = join(plot_path, 'Wavefunction.png')
+
+    # overwrite the previous file
+    if os.path.isfile(strFile):
+        os.remove(strFile)
+
+    plt.savefig(strFile)
+
+
 def plot_loss(root_path, losstot, use_latex=False):
     """ Plot the loss per epoch """
 
