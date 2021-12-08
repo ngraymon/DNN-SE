@@ -9,14 +9,18 @@ Import this module as:
 '''
 
 # system imports
+
 # third party imports
 import numpy as np
 import torch
 from torch.autograd import grad, backward
+from torch.autograd.functional import hessian
+
 # local imports
+from log_conf import log
 
 
-def kinetic_from_log(f, x):
+def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     '''
     Computes the kinetic energy from the log of |psi|,
     the -1/2 \nabla^2 \\psi / \\psi.
@@ -35,29 +39,108 @@ def kinetic_from_log(f, x):
 
     n_replicas = int(x.shape[0])
 
-    print(f"{n_replicas = }")
-    print(f"{f = }")
-    print(f"{x = }")
+    log.debug(f"{n_replicas = }")
+    # log.debug(f"\n{f = }")
+    # log.debug(f"\n{x = }")
+    log.debug(f"{f.shape = }")
+    log.debug(f"{x.shape = }")
 
     lapl_tensor = []
 
-    # this doesn't work
-    df = grad(f, x)
+    # do the fake x^2 thing
+    if fake_x_2:
+        y = x**2
+        df, = grad(y, x, create_graph=True, grad_outputs=torch.ones_like(f))
+    # what we actually want to do
+    else:
+        df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
+        # df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
 
-    # this doesn't work
-    df = [grad(f[i, 0], x[i]) for i in range(n_replicas)]
+    # # assert (df == x*2).all(), 'not the same'
 
-    print(df)
-    print(df[0])
+    # log.debug(f"\n{f = }")
+    # log.debug(f"\n{df = }")
+    # log.debug(f"\n{df[..., 0] = }")
+    # log.debug(f"\n{x = }")
+    log.debug(f"{f.shape = }")
+    log.debug(f"{df.shape = }")
+    log.debug(f"{x.shape = }")
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
-    for i in range(x.shape[1]):
-        lapl_elem = grad(torch.unsqueeze(df[..., i], -1), x)[0][..., i]
-        lapl_tensor.append(lapl_elem)
+    if not using_hessian:
+        # log.debug(f"\n{df = }")
+        # df[0] = df[1]
+        # log.debug(f"\n{df = }")
+        # import pdb; pdb.set_trace()
 
-    lapl_tensor = torch.tensor(lapl_tensor)
-    lapl = torch.sum(lapl_tensor) + torch.sum(df**2)
+        # loop over each psi_i
+        # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
+        for i in range(x.shape[-1]):
+
+            # log.debug(f"{x.shape = }")
+            # log.debug(f"{df[..., i].shape = }")
+            # log.debug(f"{x = }")
+            # log.debug(f"{df[..., i] = }")
+            # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
+            # import pdb; pdb.set_trace()
+
+            input_df = torch.unsqueeze(df[..., i], -1)
+
+            df2, = grad(
+                input_df,
+                x,
+                # allow_unused=True,
+                create_graph=True,
+                retain_graph=True,
+                grad_outputs=torch.ones_like(input_df)
+            )
+
+            log.debug(f"{i = } {df2[..., i].shape = }")
+
+            lapl_elem = df2[..., i]
+            # log.debug(f"{lapl_elem.shape = }")
+            lapl_tensor.append(lapl_elem)
+            # import pdb; pdb.set_trace()
+
+        log.debug(f"{len(lapl_tensor) = }")
+        log.debug(f"{lapl_tensor[0].shape = }")
+        # import pdb; pdb.set_trace()
+        lapl_tensor = torch.stack(lapl_tensor)
+        log.debug(f"a")
+
+    # an attempt at using hessian
+    elif using_hessian:
+
+        # print(x)
+        # print(torch.sum(x**2))
+        if fake_x_2:
+            hess, = hessian(
+                lambda x: torch.sum(x**2),
+                x,
+                create_graph=True,
+            )
+        else:
+            for i in range(x.shape[0]):
+                hess, = hessian(
+                    network.forward,
+                    x[i].unsqueeze(0),
+                    create_graph=True,
+                )
+                lapl_tensor = torch.diagonal(hess)
+                assert (lapl_tensor != float('nan')).all(), 'nans in the hessian'
+                log.debug(f"{lapl_tensor = }")
+                # import pdb; pdb.set_trace()
+
+
+    # log.debug(f"{lapl_tensor = }")
+    # log.debug(f"{lapl_tensor.shape = }")
+    # log.debug(f"{torch.sum(lapl_tensor, axis=0).shape = }")
+    # import pdb; pdb.set_trace()
+    # lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
+    lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
+    log.debug(f"{lapl.shape = }")
+    # import pdb; pdb.set_trace()
 
     return -0.5*torch.unsqueeze(lapl, -1)
 
@@ -124,15 +207,22 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         The potential between the nuclues and the electrons.
         '''
 
-        # the potental for each nucleus
+        # the potential for each nucleus
         v = []
-        # Add up all the potentials between all the nucleus and their electorns
+        # Add up all the potentials between all the nucleus and their electrons
         for atom in atoms:
             charge = torch.tensor(atom.charge, dtype=e_positions[0].dtype)
-            coords = torch.tensor(atom.coord, dtype=e_positions[0].dtype)
+            coords = torch.tensor(atom.coords, dtype=e_positions[0].dtype)
             v.extend([-charge / smooth_norm(coords - x) for x in e_positions])
-        v = torch.tensor(v)
-        return torch.sum(v)
+
+        # log.debug(f"{len(atoms) = }")
+        # log.debug(f"{len(e_positions) = }")
+        # log.debug(f"{e_positions[0].shape = }")
+        # log.debug(f"{v[0].shape = }")
+        # log.debug(f"{len(v) = }")
+        # log.debug(f"{sum(v).shape = }")
+
+        return sum(v)
 
     def electronic_potential(e_positions):
         '''
@@ -152,9 +242,8 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         if len(e_positions) > 1:
             v = []
             for (i, ri) in enumerate(e_positions):
-                v.extend([1 / smooth_norm(ri - rj) for rj in xs[i + 1:]])
-            v = torch.tensor(v)
-            return torch.sum(v)
+                v.extend([1 / smooth_norm(ri - rj) for rj in e_positions[i + 1:]])
+            return sum(v)
         else:
             return torch.tensor(0.0)
 
@@ -177,12 +266,15 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
 
         # Loops over all the combinations of atoms in the system
         for i, atom_i in enumerate(atoms):
-            for atom_j in atomes[i+1:]:
+            for atom_j in atoms[i+1:]:
+
                 # Charge of atom i an atom j.
                 qij = float(atom_i.charge * atom_j.charge)
+
                 # Add the potential between atom i and atom j.
-                vnn += qij / np.linalg.norm(atom_i.coords_array
-                                            - atom_j.coords_array)
+                vnn += qij / np.linalg.norm(
+                    np.array(atom_i.coords) - np.array(atom_j.coords)
+                )
 
         return torch.tensor([vnn], dtype=dtype)
 
@@ -202,13 +294,26 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         The total potential
         '''
 
-        e_positions = torch.split(positions, nelectrons, dim=1)
+        # doesn't work like tensorflow
+        # e_positions = torch.split(positions, [7, 1, 3], dim=1)
+        e_positions = [positions[:, i, :] for i in range(positions.shape[1])]
+        log.debug(f"{positions.shape = }")
+        log.debug(f"{len(e_positions) = }")
+        log.debug(f"{e_positions[0].shape = }")
+        log.debug(f"{nelectrons = }")
+
+        log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
+        log.debug(f"{electronic_potential(e_positions).shape = }")
+        log.debug(f"{nuclear_potential(e_positions).shape = }")
+        # import pdb; pdb.set_trace()
 
         return (
             nuclear_potential(e_positions)
             + electronic_potential(e_positions)
-            + nuclear_nuclear(e_positions.dtype)
+            + nuclear_nuclear(positions.dtype)
         )
+
+
 
     return kinetic_from_log, potential
 
