@@ -16,11 +16,11 @@ from matplotlib import pyplot as plt
 from flags import flags
 
 
-def plot_helium(network):
+def plot_helium(root_path, network):
     """ Plot the helium wavefunction over a range of electron positions """
     plt.rcParams['text.usetex'] = True
     n_step_plot = flags.n_step_plot
-    plot_path = flags.plot_path
+    plot_path = join(root_path, flags.plot_path)
 
     # fix the first electron for the Helium atom and vary the second
     # (0.5,0,0) a_0
@@ -56,7 +56,9 @@ def plot_helium(network):
     ax[1].set_ylabel(r' $\psi$')
     ax[1].set_yticklabels([])
 
+    print(strFile)
     strFile = join(plot_path, 'Wavefunction.png')
+    strFile = join(plot_path, 'Wavefunction.pdf')
 
     # overwrite the previous file
     if os.path.isfile(strFile):
@@ -65,11 +67,11 @@ def plot_helium(network):
     plt.savefig(strFile)
 
 
-def plot_loss(losstot):
+def plot_loss(root_path, losstot):
     """ Plot the loss per epoch """
     try:
         plt.rcParams['text.usetex'] = True
-        plot_path = flags.plot_path
+        plot_path = join(root_path, flags.plot_path)
 
         plt.plot(losstot)
         plt.xlabel('Epoch')
@@ -78,7 +80,7 @@ def plot_loss(losstot):
     except Exception as rte:
         print("Seems you don't have latex installed, trying 1 more time")
         plt.rcParams['text.usetex'] = False
-        plot_path = flags.plot_path
+        plot_path = join(root_path, flags.plot_path)
 
         plt.plot(losstot)
         plt.xlabel('Epoch')

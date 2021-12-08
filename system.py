@@ -33,6 +33,32 @@ diatomic_spin_polarisation = {
 _atom_namedtuple = namedtuple(typename='atom', field_names=['symbol', 'number', 'coords', 'charge'])
 
 
+def group_number(symbol, number, period):
+    """ return the group number of an atom """
+
+    is_lanthanide = (58 <= number <= 71)
+    is_actinide = (90 <= number <= 103)
+
+    if is_lanthanide or is_actinide:
+        return -1
+    if symbol == 'He':
+        return 18
+
+    period_starts = (1, 3, 11, 19, 37, 55, 87)
+    period_start = period_starts[period - 1]
+    group_ = number - period_start + 1
+
+    # Adjust for absence of d block in periods 2 and 3.
+    if period < 4 and group_ > 2:
+        group_ += 10
+
+    # Adjust for Lanthanides and Actinides in periods 6 and 7.
+    if period >= 6 and group_ > 3:
+        group_ -= 14
+
+    return group_
+
+
 class Atom(_atom_namedtuple):
     """ Atom information for Hamiltonians.
         Implemented as a subclass of the `namedtuple` `_atom_namedtuple`.
@@ -75,7 +101,13 @@ class Atom(_atom_namedtuple):
         """
 
         # the `elements` module should implement a helper function for this
-        number = 1 if symbol == 'H' else elements.SYMBOLS[symbol].atomic_number
+        if symbol == 'H':
+            number = 1
+        else:
+            for d in elements.e_list:
+                if symbol == d['symbol']:
+                    number = d['atomic_number']
+                    break
 
         if charge > number:
             raise ValueError(
@@ -90,7 +122,10 @@ class Atom(_atom_namedtuple):
             if symbol == 'H':
                 spin_polarization = 0
             else:
-                raise Exception('need to fully implement the `elements` module')
+                unpaired_e_dict = {1: 1, 2: 0, 13: 1, 14: 2, 15: 3, 16: 2, 17: 1, 18: 0}
+                d = elements.e_list[number - charge]
+                gn = group_number(symbol, number, d['period'])
+                spin_polarization = unpaired_e_dict[gn]
 
             nof_alpha = (number + spin_polarization) // 2
             nof_beta = number - charge - nof_alpha
@@ -120,6 +155,33 @@ def hydrogen_chains(n, width, charge=0):
         Atom(symbol='H', number=1, coords=(0.0, 0.0, z), charge=1)
         for z in np.linspace(-z_lim, z_lim, n)
     ]
+
+    return atom_list, spin_config
+
+
+def diatomic(symbol1, symbol2, bond_length, spins=None, charge=0, units='bohr'):
+    """Return configuration for a diatomic molecule."""
+    if spins is None:
+        atomic_number_1 = elements.SYMBOLS[symbol1].atomic_number
+        atomic_number_2 = elements.SYMBOLS[symbol2].atomic_number
+        total_charge = atomic_number_1 + atomic_number_2 - charge
+
+        if total_charge % 2 == 0:
+            spins = (total_charge // 2, total_charge // 2)
+        else:
+            spins = ((total_charge + 1)// 2, (total_charge - 1) // 2)
+
+    return [
+      Atom(symbol=symbol1, coords=(0.0, 0.0, bond_length/2.0), units=units),
+      Atom(symbol=symbol2, coords=(0.0, 0.0, -bond_length/2.0), units=units)
+    ], spins
+
+
+def helium():
+    atom_list = [
+        Atom(symbol='He', number=2, coords=(0.0, 0.0, 0.0), charge=0),
+    ]
+    spin_config = (1, 1)
 
     return atom_list, spin_config
 

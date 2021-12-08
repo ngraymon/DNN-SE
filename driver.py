@@ -774,10 +774,10 @@ def main(molecule, spin_config, pargs):
 def simple_plotting(pargs, network, loss_storage):
     """ x """
 
-    plotting.plot_loss(loss_storage)
+    plotting.plot_loss(pargs.res_path, loss_storage)
 
     if pargs.name == 'helium':
-        plotting.plot_helium(network)
+        plotting.plot_helium(pargs.res_path, network)
 
 
 def prepare_parsed_arguments():
@@ -822,7 +822,6 @@ def prepare_molecule_and_spins(pargs):
         molecule, spins = system.methane()
 
     elif pargs.name == "helium":
-        raise Exception('Not supported yet')
         molecule, spins = system.Atom.build_basic_atom(symbol='He', charge=0)
 
     else:
