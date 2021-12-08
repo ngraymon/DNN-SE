@@ -715,7 +715,7 @@ def main(molecule, spin_config):
     using_scf_flag = False
 
     # create the network object
-    network_object = prepare_network(molecule, nof_electrons, spin_config)
+    network_object = prepare_network(molecule, nof_electrons, spin_config).to(flags.device)
     log.debug("Finished initializing the Network object")
 
     # currently only returns `None`

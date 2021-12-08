@@ -33,7 +33,7 @@ original_flags = SimpleNamespace()
 """these are values that may or may not be modified and then implented into the network
 if any values are missing feel free to add to releavent section or let me (Matt)
 know"""
-
+flags.device = 'cuda'
 flags.multi_gpu = False  # number of GPU's used
 flags.batch_size = 7    # number of walkers
 flags.double_precision = False    # the double or single precision

@@ -8,13 +8,14 @@ This module defines the neural network.
 import itertools as it
 from os import walk
 from os.path import join, abspath
+from log_conf import log
 
 # third party imports
 import torch
 import numpy as np
 
 # local imports
-from log_conf import log
+from flags import flags
 
 tab = " "*4  # define tab as 4 spaces
 
@@ -121,7 +122,7 @@ class FermiNet(torch.nn.Module):
             f"{self.nuclei_positions.shape}"
         )
 
-        self.eN_vectors = torch.unsqueeze(electron_positions, -2) - self.nuclei_positions
+        self.eN_vectors = (torch.unsqueeze(electron_positions, -2) - self.nuclei_positions).to(flags.device)
         log.debug(f"{self.eN_vectors.shape = }")
 
         """ if we have (7, 10, 5, 3) then take the norm along the 3 dimension (cartesian co-ordinates)
@@ -267,13 +268,14 @@ class FermiNet(torch.nn.Module):
         last_layer = layer_outputs[-1]
 
         # has dimension of (7, 10, 32)
-        last_layers_single_stream = last_layer[0]
+        last_layers_single_stream = last_layer[0].to(flags.device)
         log.debug(f"{last_layers_single_stream.shape = }")
 
         # broadcasted dot product; the (w * h + g) term in equation 6 in the paper
         # has an output shape of
         # (batch_size, num_determinants, n_electrons, n_electrons)
         # (7, 16, 10, 10)
+        # print(biases.device, last_layers_single_stream.device, weights.device)
         weighted_network_output = biases[None, :, :, None] + torch.mul(
             # has dimension of (batch_size, 1, 1, 10, 32)
             last_layers_single_stream[:, None, None, :, :],
@@ -283,6 +285,7 @@ class FermiNet(torch.nn.Module):
         log.debug(f"{weighted_network_output.shape = }")
 
         # broadcasted operations; the "sum over m" term in equation 6 in the paper
+        # print(sigma_weights.device, self.eN_vectors.device)
         decaying_potentials = torch.mul(
             # has dimension of (1, 16, 10, 1, 5)
             pi_weights[None, :, :, None, :],
@@ -326,8 +329,8 @@ class FermiNet(torch.nn.Module):
 
         # instantiate final matrices:
         log.debug(f"Instantiate the orbitals tensors")
-        phi_up = torch.empty(self.batch_size, self.num_determinants, self.n_up, self.n_up)
-        phi_down = torch.empty(self.batch_size, self.num_determinants, self.n_down, self.n_down)
+        phi_up = torch.empty(self.batch_size, self.num_determinants, self.n_up, self.n_up).to(flags.device)
+        phi_down = torch.empty(self.batch_size, self.num_determinants, self.n_down, self.n_down).to(flags.device)
         log.debug(f"{phi_up.shape = }")
         log.debug(f"{phi_down.shape = }")
         log.debug("\n")
@@ -357,6 +360,7 @@ class FermiNet(torch.nn.Module):
             # det_no_max = det[i, det[i] != max_val]
             # print(max_val)
             # print(det_no_max.shape)
+            # print(self.omega_weights.device, det.device, abs_det.device)
             abs_max_det = max(abs_det[i])
             log_det[i] = torch.log(abs_max_det) + torch.log(torch.abs(torch.sum(
                 self.omega_weights
