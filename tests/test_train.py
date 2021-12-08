@@ -76,7 +76,7 @@ class Test_Train():
 
         # modify preform_one_step
         monte_carlo.preform_one_step = lambda: (
-            None, torch.tensor([float('nan')]), None
+            0.0, torch.tensor([float('nan')]), None
         )
 
         # create the object
