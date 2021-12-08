@@ -806,7 +806,7 @@ def prepare_parsed_arguments():
     # formatclass = argparse.MetavarTypeHelpFormatter
 
     # parse the arguments
-    parser = argparse.ArgumentParser(description="Variational auto-encoder (VAE)", formatter_class=formatclass)
+    parser = argparse.ArgumentParser(description="Fermi net 2.0?", formatter_class=formatclass)
     parser.add_argument('--name', type=str, default='hydrogen', metavar='system name', help='the name of the QM system to evaluate')
     parser.add_argument('--length', type=int, default=1, metavar='length of chain', help='if using a hydrogen chain, how long the chain is')
     parser.add_argument('--param', type=str, default='param.json', metavar='param.json', help='file name for json attributes')
