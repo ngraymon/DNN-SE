@@ -771,10 +771,13 @@ def main(molecule, spin_config, pargs):
     return network_object, loss_storage
 
 
-def simple_plotting(network, loss_storage):
+def simple_plotting(pargs, network, loss_storage):
     """ x """
-    plotting.plot_helium(network)
+
     plotting.plot_loss(loss_storage)
+
+    if pargs.name == 'helium':
+        plotting.plot_helium(network)
 
 
 def prepare_parsed_arguments():
@@ -852,4 +855,4 @@ if __name__ == '__main__':
     network, loss_storage = main(molecule, spins, pargs)
 
     if pargs.plot > 0:
-        simple_plotting(network, loss_storage)
+        simple_plotting(pargs, network, loss_storage)

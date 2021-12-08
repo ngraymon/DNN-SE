@@ -67,13 +67,22 @@ def plot_helium(network):
 
 def plot_loss(losstot):
     """ Plot the loss per epoch """
+    try:
+        plt.rcParams['text.usetex'] = True
+        plot_path = flags.plot_path
 
-    plt.rcParams['text.usetex'] = True
-    plot_path = flags.plot_path
+        plt.plot(losstot)
+        plt.xlabel('Epoch')
+        plt.ylabel('Local Energy (loss) [J]')
 
-    plt.plot(losstot)
-    plt.xlabel('Epoch')
-    plt.ylabel('Local Energy (loss) [J]')
+    except Exception as rte:
+        print("Seems you don't have latex installed, trying 1 more time")
+        plt.rcParams['text.usetex'] = False
+        plot_path = flags.plot_path
+
+        plt.plot(losstot)
+        plt.xlabel('Epoch')
+        plt.ylabel('Local Energy (loss) [J]')
 
     strFile = join(plot_path, 'Local_Energy.png')
 
