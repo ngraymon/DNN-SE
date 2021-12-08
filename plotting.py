@@ -1,7 +1,7 @@
 
 # system imports
 import os
-from os.path import join
+from os.path import join, abspath
 
 # third party imports
 import torch
@@ -16,49 +16,69 @@ from matplotlib import pyplot as plt
 from flags import flags
 
 
-def plot_helium(root_path, network):
+def try_to_make_directory(results_path):
+    if not os.path.exists(results_path):
+        try:
+            os.makedirs(results_path, exist_ok=True)
+        except Exception as e:
+            print(
+                "It seems the results directory doesn't exist "
+                "and I failed to create it with `os.makedirs`:\n"
+                f"{abspath(results_path)}\n"
+            )
+            raise e
+
+
+def plot_helium(root_path, network, use_latex=False):
     """ Plot the helium wavefunction over a range of electron positions """
-    plt.rcParams['text.usetex'] = True
-    n_step_plot = flags.n_step_plot
+
+    plt.rcParams['text.usetex'] = use_latex
+
+    plotting_density = flags.plotting_density
+
     plot_path = join(root_path, flags.plot_path)
 
-    # fix the first electron for the Helium atom and vary the second
-    # (0.5,0,0) a_0
-    # (x,0,0) a_0, with x=linespace(-1,1,20)
-    # (0.5 cosθ,0.5 sinθ,0)a_0
+    try_to_make_directory(plot_path)  # create directory if it doesn't exist
+
+    """ fix the first electron for the Helium atom and vary the second
+    for example:
+        (0.5, 0,0) a_0
+        (x, 0, 0) a_0, with x=linespace(-1,1,20)
+        (0.5 cosθ, 0.5 sinθ, 0) a_0
+    """
 
     linear = np.array([
         [[0.5, 0, 0], [x, 0, 0]]
-        for x in np.linspace(-1, 1, n_step_plot)
+        for x in np.linspace(-1, 1, plotting_density)
     ])
     rotational = np.array([
         [[0.5, 0, 0], [0.5*np.cos(theta), 0.5*np.sin(theta), 0]]
-        for theta in np.linspace(-180, 180, n_step_plot)
+        for theta in np.linspace(-np.pi, np.pi, plotting_density)
     ])
 
-    phi_lin = network.forward(torch.tensor(linear))
-    phi_rot = network.forward(torch.tensor(rotational))
+    phi_lin = network.forward(torch.tensor(linear)).detach()
+    phi_rot = network.forward(torch.tensor(rotational)).detach()
 
     fig, ax = plt.subplots(2)
     fig.suptitle('Wave function for helium atom')
     fig.tight_layout()
 
     # Make your plot, set your axes labels
-    ax[0].plot(torch.linspace(-1, 1, 10), phi_lin)
+
+    ax[0].plot(torch.linspace(-1, 1, plotting_density), torch.exp(phi_lin))
     ax[0].set_xlabel('x [Bohr]')
     ax[0].set_ylabel(r' $\psi$')
 
     # Turn off tick labels
     ax[0].set_yticklabels([])
 
-    ax[1].plot(torch.deg2rad(torch.linspace(-180, 180, 10)), phi_rot)
+    ax[1].plot(torch.linspace(-np.pi, np.pi, plotting_density), torch.exp(phi_rot))
     ax[1].set_xlabel(r'$\theta$')
     ax[1].set_ylabel(r' $\psi$')
     ax[1].set_yticklabels([])
 
-    print(strFile)
     strFile = join(plot_path, 'Wavefunction.png')
-    strFile = join(plot_path, 'Wavefunction.pdf')
+    print(strFile)
 
     # overwrite the previous file
     if os.path.isfile(strFile):
@@ -67,24 +87,16 @@ def plot_helium(root_path, network):
     plt.savefig(strFile)
 
 
-def plot_loss(root_path, losstot):
+def plot_loss(root_path, losstot, use_latex=False):
     """ Plot the loss per epoch """
-    try:
-        plt.rcParams['text.usetex'] = True
-        plot_path = join(root_path, flags.plot_path)
 
-        plt.plot(losstot)
-        plt.xlabel('Epoch')
-        plt.ylabel('Local Energy (loss) [J]')
+    plt.rcParams['text.usetex'] = use_latex
+    plot_path = join(root_path, flags.plot_path)
+    try_to_make_directory(plot_path)  # create directory if it doesn't exist
 
-    except Exception as rte:
-        print("Seems you don't have latex installed, trying 1 more time")
-        plt.rcParams['text.usetex'] = False
-        plot_path = join(root_path, flags.plot_path)
-
-        plt.plot(losstot)
-        plt.xlabel('Epoch')
-        plt.ylabel('Local Energy (loss) [J]')
+    plt.plot(losstot)
+    plt.xlabel('Epoch')
+    plt.ylabel('Local Energy (loss) [J]')
 
     strFile = join(plot_path, 'Local_Energy.png')
 

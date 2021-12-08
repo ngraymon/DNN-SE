@@ -1,5 +1,6 @@
 # project specific
 results/results_*
+results/plots/*
 states_*.txt
 
 # Byte-compiled / optimized / DLL files

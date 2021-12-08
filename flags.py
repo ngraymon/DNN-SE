@@ -161,9 +161,8 @@ flags.jastrow_een = False
 
 
 # plotting flags
-flags.n_step_plot = 40
+flags.plotting_density = 300  # density of plotting grid
 flags.plot_path = 'plots/'
-
 
 
 #  -----------------------------
