@@ -56,7 +56,7 @@ class Train():
             new_time = time.time()
             if new_time - last_time > 5:#waits 5 seconds between outputs
                 last_time = new_time + 0
-                log.info(f"Epoch: {i+1}")
+                log.info(f"Epoch: {i+1}\t / {self.param['epoch']}")
             #
 
             self.net.zero_grad()
