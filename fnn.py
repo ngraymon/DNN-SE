@@ -535,10 +535,10 @@ class FermiLayer(torch.nn.Module):
 
         # compute the means (g components)
         summation_dim = 1  # (note that we should change this if we are broadcasting over batch_size)
-        single_g_up = torch.mean(single_h_up, summation_dim, keepdim=True) if single_h_up.nelement() else torch.empty(0)
-        single_g_down = torch.mean(single_h_down, summation_dim, keepdim=True) if single_h_down.nelement() else torch.empty(0)
-        double_g_ups = torch.mean(double_h_ups, summation_dim) if double_h_ups.nelement() else torch.empty(len(single_h), 0)
-        double_g_downs = torch.mean(double_h_downs, summation_dim) if double_h_downs.nelement() else torch.empty(len(single_h), 0)
+        single_g_up = torch.mean(single_h_up, summation_dim, keepdim=True) if single_h_up.nelement() else torch.empty(single_h.shape[0], single_h.shape[1], 0)
+        single_g_down = torch.mean(single_h_down, summation_dim, keepdim=True) if single_h_down.nelement() else torch.empty(single_h.shape[0], single_h.shape[1], 0)
+        double_g_ups = torch.mean(double_h_ups, summation_dim) if double_h_ups.nelement() else torch.empty(single_h.shape[0], single_h.shape[1], 0)
+        double_g_downs = torch.mean(double_h_downs, summation_dim) if double_h_downs.nelement() else torch.empty(single_h.shape[0], single_h.shape[1], 0)
 
         dims = (1, self.n, 1)  # This should create a tuple (1, 10, 1) given `self.n` = 10
 
@@ -555,6 +555,7 @@ class FermiLayer(torch.nn.Module):
         but `single_g_down` had dimensionality (1, 20)
         we have to repeat its values
         """
+        
         f_vectors = torch.cat((
             single_h,
             torch.tile(single_g_up, dims),
