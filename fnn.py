@@ -219,8 +219,8 @@ class FermiNet(torch.nn.Module):
         torch.save(self, model_path)
 
         log.info(
-            f"FermiNet model saved to file\n:'{model_path}'\n"
-            f"To load, use 'model = torch.load({model_path})'"
+            f"FermiNet model saved to file:\n{model_path}\n"
+            f"To load, use 'model = torch.load(<path>)'"
         )
 
         # this one only saves the weights and biases (i.e. tune-able parameters)
@@ -228,8 +228,8 @@ class FermiNet(torch.nn.Module):
         torch.save(self.state_dict(), model_state_path)
 
         log.info(
-            f"FermiNet model `state_dict` saved to file\n:'{model_state_path}'\n"
-            f"To load, use 'model = model.load_state_dict(torch.load({model_state_path}))'"
+            f"FermiNet model `state_dict` saved to file:\n{model_state_path}\n"
+            "To load, use 'model = model.load_state_dict(torch.load(<path>))'"
         )
 
     @classmethod
