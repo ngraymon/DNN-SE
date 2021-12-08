@@ -53,7 +53,7 @@ def plot_helium(root_path, network, use_latex=False):
     ])
     rotational = np.array([
         [[0.5, 0, 0], [0.5*np.cos(theta), 0.5*np.sin(theta), 0]]
-        for theta in np.linspace(-np.pi, np.pi, plotting_density)
+        for theta in np.deg2rad(np.linspace(-np.pi, np.pi, plotting_density))
     ])
 
     phi_lin = network.forward(torch.tensor(linear)).detach()
