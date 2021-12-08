@@ -39,7 +39,7 @@ else:
 
 
 flags.multi_gpu = False           # number of GPU's used
-flags.batch_size = 7              # number of walkers
+flags.batch_size = 100              # number of walkers
 flags.double_precision = False    # the double or single precision
 flags.pretrain_iterations = 1000  # the iterations over which the network is pretrained
 flags.pretrain_basis = 'sto-3g'   # To do with PySCF and using the Hartree-Fock calculation
