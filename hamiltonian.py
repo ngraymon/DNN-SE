@@ -5,7 +5,7 @@ This module contains the functions for constructing Hamiltonians and setting
 up the VMC calculations.
 
 Import this module as:
-    import Hamiltonian as H
+    import hamiltonian
 '''
 
 # system imports
@@ -13,14 +13,14 @@ Import this module as:
 # third party imports
 import numpy as np
 import torch
-from torch.autograd import grad, backward
+from torch.autograd import grad
 from torch.autograd.functional import hessian
 
 # local imports
 from log_conf import log
 
 
-def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
+def kinetic_from_log(f, x, network, using_hessian=False):
     '''
     Computes the kinetic energy from the log of |psi|,
     the -1/2 \nabla^2 \\psi / \\psi.
@@ -39,27 +39,23 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
 
     n_replicas = int(x.shape[0])
 
+    # debug printing (turned off when verbose = 1)
     log.debug(f"{n_replicas = }")
     log.debug(f"{f.shape = }")
     log.debug(f"{x.shape = }")
 
-    lapl_tensor = []
+    # where we store the second gradients
+    lapl_list = []
 
-    # do the fake x^2 thing
-    if fake_x_2:
-        y = x**2
-        df, = grad(y, x, create_graph=True, grad_outputs=torch.ones_like(f))
-    # what we actually want to do
-    else:
-        df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
+    df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
 
-
+    # debug printing (turned off when verbose = 1)
     log.debug(f"{f.shape = }")
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
     if not using_hessian:
-        # loop over each psi_i
+        # loop over each cartesian co-ordinate
         # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
         for i in range(x.shape[-1]):
 
@@ -73,37 +69,33 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
                 grad_outputs=torch.ones_like(input_df)
             )
 
+            assert (df2 != float('nan')).all(), 'nans in the hessian'
+
             log.debug(f"{i = } {df2[..., i].shape = }")
 
             lapl_elem = df2[..., i]
-            lapl_tensor.append(lapl_elem)
+            lapl_list.append(lapl_elem)
 
-        log.debug(f"{len(lapl_tensor) = }")
-        log.debug(f"{lapl_tensor[0].shape = }")
-        lapl_tensor = torch.stack(lapl_tensor)
-        log.debug(f"a")
+        log.debug(f"{len(lapl_list) = }")
+        log.debug(f"{lapl_list[0].shape = }")
+
+        # convert the list to a torch tensor before returning
+        lapl_tensor = torch.stack(lapl_list)
 
     # an attempt at using hessian
     elif using_hessian:
 
-        if fake_x_2:
+        for i in range(x.shape[0]):
             hess, = hessian(
-                lambda x: torch.sum(x**2),
-                x,
+                network.forward,
+                x[i].unsqueeze(0),
                 create_graph=True,
             )
-        else:
-            for i in range(x.shape[0]):
-                hess, = hessian(
-                    network.forward,
-                    x[i].unsqueeze(0),
-                    create_graph=True,
-                )
-                lapl_tensor = torch.diagonal(hess)
-                assert (lapl_tensor != float('nan')).all(), 'nans in the hessian'
-                log.debug(f"{lapl_tensor = }")
+            lapl_tensor = torch.diagonal(hess)
 
+            assert (lapl_tensor != float('nan')).all(), 'nans in the hessian'
 
+    # equation after eq 9 on page 5 of the paper pdv^2(psi) + pdv(psi)^2
     lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
     log.debug(f"{lapl.shape = }")
 
@@ -148,6 +140,7 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         # If their is no instability then return the norm of x
         if potential_epsilon == 0:
             return torch.norm(x, dim=1, keepdim=True)
+
         # Else we add the epsilon term then return the norm.
         else:
             return torch.sqrt(
@@ -174,6 +167,7 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
 
         # the potential for each nucleus
         v = []
+
         # Add up all the potentials between all the nucleus and their electrons
         for atom in atoms:
             charge = torch.tensor(atom.charge, dtype=e_positions[0].dtype)
@@ -199,9 +193,12 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         # If there is more the one electron in the system.
         if len(e_positions) > 1:
             v = []
+
             for (i, ri) in enumerate(e_positions):
                 v.extend([1 / smooth_norm(ri - rj) for rj in e_positions[i + 1:]])
+
             return sum(v)
+
         else:
             return torch.tensor(0.0)
 
@@ -251,25 +248,13 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         -------
         The total potential
         '''
-
-        # doesn't work like tensorflow
         e_positions = [positions[:, i, :] for i in range(positions.shape[1])]
-        log.debug(f"{positions.shape = }")
-        log.debug(f"{len(e_positions) = }")
-        log.debug(f"{e_positions[0].shape = }")
-        log.debug(f"{nelectrons = }")
-
-        log.debug(f"{nuclear_nuclear(positions.dtype).shape = }")
-        log.debug(f"{electronic_potential(e_positions).shape = }")
-        log.debug(f"{nuclear_potential(e_positions).shape = }")
 
         return (
             nuclear_potential(e_positions)
             + electronic_potential(e_positions)
             + nuclear_nuclear(positions.dtype)
         )
-
-
 
     return kinetic_from_log, potential
 
@@ -295,10 +280,13 @@ def exact_hamiltonian(atoms, nelectrons, potential_epsilon=0.0):
     # The kinetic and the potential functions.
     k_fn, v_fn = operators(atoms, nelectrons, potential_epsilon=0.0)
 
-    def _hamiltonian(f, x):
-        logpsi, signpsi = f(x)
+    def _hamiltonian(f, positions):
+        """ The function we will return """
+        logpsi, signpsi = f(positions)
+
         psi = torch.exp(logpsi) * signpsi
-        hpsi = psi * (k_fn(logpsi, positons) + v_fn(positions))
+
+        hpsi = psi * (k_fn(logpsi, positions) + v_fn(positions))
         return psi, hpsi
 
     return _hamiltonian
