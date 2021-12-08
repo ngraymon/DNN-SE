@@ -5,8 +5,9 @@ This module preforms the training
 """
 
 # system imports
-from log_conf import log
 import time
+import warnings
+from log_conf import log
 
 # third party imports
 import torch
@@ -63,7 +64,9 @@ class Train():
             # for a given batch size
             phi, walkers, accuracy = self.mcmc.preform_one_step()
 
-            copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                copy_of_phi = torch.tensor(phi)  # make sure the grad of phi is not changed in `self.kinetic`
 
             assert not torch.any(torch.isnan(walkers)), 'state configuration is borked'
 
