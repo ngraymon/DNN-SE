@@ -811,6 +811,7 @@ def prepare_parsed_arguments():
     parser.add_argument('-device', type=str, default=flags.device, metavar='device_name', help='specify a specific device for PyTorch to use')
     parser.add_argument('-epochs', type=int, default=flags.iterations, metavar='num_epochs', help='number of epochs to run for')
     parser.add_argument('-lr', type=float, default=flags.learning_rate, metavar='learning_rate', help='learning rate for the optimiser')
+    parser.add_argument('-plot', type=int, default=0, metavar='plot_control', help='will run simple_plotting() if greater than 0')
 
     return parser.parse_args()
 
@@ -863,5 +864,5 @@ if __name__ == '__main__':
 
     loss_storage = main(molecule, spins)
 
-    if False:  # make this an argparse parameter
+    if pargs.plot > 0: 
         simple_plotting(loss_storage)
