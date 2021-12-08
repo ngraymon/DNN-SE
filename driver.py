@@ -762,7 +762,7 @@ def main(molecule, spin_config):
     )
     train_stop_time = time.time()
     log.info("Training completed\t [{0:.4f} s]".format(train_stop_time - train_start_time))
-    #Save:
+    # Save:
     network_object.save(result_path)
     log.info("Model Saved.")
     with open(join(result_path, "time.txt"), 'w') as f:
@@ -775,14 +775,17 @@ def main(molecule, spin_config):
     # plot the training progress
     # plotting.plot_training_metrics(loss_storage, name)
 
-    # put the plotting here
-    # import matplotlib.pyplot as plt
-    # plt.plot(loss_storage)
-    # plt.savefig(join(result_path, "plot.pdf"))
-    # plt.show()
-    # plotting.plot_helium(network_object, name)
-
     print("Success!")
+
+    return loss_storage
+
+
+def simple_plotting(loss_storage):
+    """ x """
+    import matplotlib.pyplot as plt
+    plt.plot(loss_storage)
+    plt.show()
+    # plotting.plot_helium(network_object, name)
 
 
 if __name__ == '__main__':
@@ -817,4 +820,8 @@ if __name__ == '__main__':
         print(f"  Atom {i}: {m}")
     print(f"  {spins = }\n")
 
-    main(molecule, spins)
+    # train the network
+    loss_storage = main(molecule, spins)
+
+    if False:  # make this an argparse parameter
+        simple_plotting(loss_storage)
