@@ -750,6 +750,7 @@ def main(molecule, spin_config):
 
     # what we've all been waiting for, the ACTUAL training!
     log.debug("Attempting to start the training")
+    train_start_time = time.time()
     loss_storage = trainer_object.train(
         # network_configuration,
         # optimizaiton_configuration,
@@ -757,7 +758,8 @@ def main(molecule, spin_config):
         # mcmc_configuration,
         **kwargs
     )
-    log.debug("Training completed")
+    train_stop_time = time.time()
+    log.info("Training completed\t [{0:.4f} s]".format(train_stop_time - train_start_time))
     #Save:
     network_object.save(result_path)
     log.info("Model Saved.")
@@ -766,10 +768,10 @@ def main(molecule, spin_config):
     # plotting.plot_training_metrics(loss_storage, name)
 
     # put the plotting here
-    import matplotlib.pyplot as plt
-    plt.plot(loss_storage)
-    plt.savefig(join(result_path, "plot.pdf"))
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # plt.plot(loss_storage)
+    # plt.savefig(join(result_path, "plot.pdf"))
+    # plt.show()
     # plotting.plot_helium(network_object, name)
 
     print("Success!")
