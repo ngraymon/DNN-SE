@@ -135,11 +135,7 @@ def plot_h4_circle(root_path, kinetic_fn, potential_fn, network, use_latex=False
 
     # Make your plot, set your axes labels
 
-<<<<<<< HEAD
-    ax.plot(x_values, local_energy*0.529177249)
-=======
     ax.plot(x_values, local_energy)
->>>>>>> 532e8acf29d108692036374e4ec8d8b92c96406f
     ax.set_xlabel(r'$\theta (degrees)$')
     ax.set_ylabel(r' $Energy (a.u.)$')
 
