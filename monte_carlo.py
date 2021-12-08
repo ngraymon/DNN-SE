@@ -95,11 +95,9 @@ class MonteCarlo():
         self._stddev = stddev
 
         # initialize our walkers
-        # nof_electrons = len(initial_offset) // 3
 
         # the empty dimension `1` at the end is necessary for correct concatenation
         # when sampling
-        # self.walker_shape = (batch_size, len(initial_offset))
         self.batch_size = batch_size
 
         number_of_replicas = 1  # how many GPUs we are using
@@ -123,10 +121,8 @@ class MonteCarlo():
 
     def compute_psi(self, visible_nodes, *args, **kwargs):
         """ x """
-        # torch.autograd.set_detect_anomaly(True)
         ret = self.net.forward(visible_nodes, *args, **kwargs)
         assert ret.requires_grad is True
-        # log.debug(f"{ret = }\n{ret.shape = }")
         return ret
 
     def pre_train(HF_orbitals, nof_steps, **kwargs):
@@ -255,11 +251,6 @@ class MonteCarlo():
         self.psi.data = cur_psi
         self.rolling_accuracy = accuracy = torch.mean(accepted_bools.float())
 
-        # df = grad(self.psi, self.walkers, allow_unused=True)
-        # df = torch.autograd.grad(self.psi, self.walkers, grad_outputs=torch.ones_like(self.psi))
-
-        # log.debug(f"{df = }")
-        # log.debug(f"{df.shape = }")
         log.debug(f"{self.walkers.shape = }")
         log.debug(f"{self.psi.shape = }")
 

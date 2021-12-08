@@ -91,7 +91,6 @@ class Atom(_atom_namedtuple):
                 spin_polarization = 0
             else:
                 raise Exception('need to fully implement the `elements` module')
-                # elements.ATOMIC_NUMS[atomic_number-charge].spin_config
 
             nof_alpha = (number + spin_polarization) // 2
             nof_beta = number - charge - nof_alpha

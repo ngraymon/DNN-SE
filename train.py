@@ -104,9 +104,7 @@ class Train():
 
             # compute the gradient w.r.t. the weights and update with ADAM
             computed_loss.backward(retain_graph=True)
-            # Optimizer.step()
             self.optimizer.step()
             losstot.append(loss.item())
-            # phi_phisgn.append()
 
         return losstot

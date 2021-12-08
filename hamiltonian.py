@@ -40,8 +40,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     n_replicas = int(x.shape[0])
 
     log.debug(f"{n_replicas = }")
-    # log.debug(f"\n{f = }")
-    # log.debug(f"\n{x = }")
     log.debug(f"{f.shape = }")
     log.debug(f"{x.shape = }")
 
@@ -54,39 +52,22 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     # what we actually want to do
     else:
         df, = grad(f, x, create_graph=True, allow_unused=True, grad_outputs=torch.ones_like(f))
-        # df, = grad(f, x, create_graph=True, grad_outputs=torch.ones_like(f))
 
-    # # assert (df == x*2).all(), 'not the same'
 
-    # log.debug(f"\n{f = }")
-    # log.debug(f"\n{df = }")
-    # log.debug(f"\n{df[..., 0] = }")
-    # log.debug(f"\n{x = }")
     log.debug(f"{f.shape = }")
     log.debug(f"{df.shape = }")
     log.debug(f"{x.shape = }")
 
     if not using_hessian:
-        # log.debug(f"\n{df = }")
-        # df[0] = df[1]
-        # log.debug(f"\n{df = }")
-
         # loop over each psi_i
         # sized (10, 3) we pick (10, 1) and broadcast the grad of that with x (10, 3)
         for i in range(x.shape[-1]):
-
-            # log.debug(f"{x.shape = }")
-            # log.debug(f"{df[..., i].shape = }")
-            # log.debug(f"{x = }")
-            # log.debug(f"{df[..., i] = }")
-            # log.debug(f"{torch.unsqueeze(df[..., i], -1).shape = }")
 
             input_df = torch.unsqueeze(df[..., i], -1)
 
             df2, = grad(
                 input_df,
                 x,
-                # allow_unused=True,
                 create_graph=True,
                 retain_graph=True,
                 grad_outputs=torch.ones_like(input_df)
@@ -95,7 +76,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
             log.debug(f"{i = } {df2[..., i].shape = }")
 
             lapl_elem = df2[..., i]
-            # log.debug(f"{lapl_elem.shape = }")
             lapl_tensor.append(lapl_elem)
 
         log.debug(f"{len(lapl_tensor) = }")
@@ -124,10 +104,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
                 log.debug(f"{lapl_tensor = }")
 
 
-    # log.debug(f"{lapl_tensor = }")
-    # log.debug(f"{lapl_tensor.shape = }")
-    # log.debug(f"{torch.sum(lapl_tensor, axis=0).shape = }")
-    # lapl = torch.sum(lapl_tensor, axis=0) + torch.sum(df**2, axis=-1)
     lapl = torch.sum(lapl_tensor, axis=(0, 2)) + torch.sum(df**2, axis=(1, 2))
     log.debug(f"{lapl.shape = }")
 
@@ -204,13 +180,6 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
             coords = torch.tensor(atom.coords, dtype=e_positions[0].dtype)
             v.extend([-charge / smooth_norm(coords - x) for x in e_positions])
 
-        # log.debug(f"{len(atoms) = }")
-        # log.debug(f"{len(e_positions) = }")
-        # log.debug(f"{e_positions[0].shape = }")
-        # log.debug(f"{v[0].shape = }")
-        # log.debug(f"{len(v) = }")
-        # log.debug(f"{sum(v).shape = }")
-
         return sum(v)
 
     def electronic_potential(e_positions):
@@ -284,7 +253,6 @@ def operators(atoms, nelectrons, potential_epsilon=0.0):
         '''
 
         # doesn't work like tensorflow
-        # e_positions = torch.split(positions, [7, 1, 3], dim=1)
         e_positions = [positions[:, i, :] for i in range(positions.shape[1])]
         log.debug(f"{positions.shape = }")
         log.debug(f"{len(e_positions) = }")

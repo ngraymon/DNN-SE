@@ -240,8 +240,6 @@ def generate_electron_position_vector(molecule, electron_spec):
     # Construct a dummy iso-electronic neutral system.
     temp_atom_list = [copy.copy(atom) for atom in molecule]
 
-    # log.(f"{temp_atom_list = }")
-
     if total_charge == 0:
         log.debug('System is already neutral')
     elif total_charge != 0:
@@ -468,7 +466,6 @@ def prepare_nework_configuration(*args):
     """
     config = SimpleNamespace()  # temporary solution
 
-    # config.hidden_units/layers = ()
     config.determinants: int = 16
     config.use_envelope: bool = False
 
