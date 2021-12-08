@@ -763,6 +763,12 @@ def main(molecule, spin_config):
     #Save:
     network_object.save(result_path)
     log.info("Model Saved.")
+    with open(join(result_path, "time.txt"), 'w') as f:
+        f.write(str(train_stop_time - train_start_time))
+        f.close()
+    with open(join(result_path, "loss_storage.txt"), 'w') as f:
+        f.write(str(loss_storage))
+        f.close()
 
     # plot the training progress
     # plotting.plot_training_metrics(loss_storage, name)
