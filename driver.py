@@ -33,7 +33,6 @@ import elements
 from train import Train
 from monte_carlo import MonteCarlo
 import plotting
-# import quantum_mechanics as QM
 
 
 tab = " "*4  # define tab as 4 spaces
@@ -508,7 +507,8 @@ def prepare_kfac_configuration(*args):
     """
     kwargs = {}
     try:
-        kfac_configuration = kfac.KfacConfiguration(*args, **kwargs)
+        kfac_configuration = None
+        # kfac_configuration = kfac.KfacConfiguration(*args, **kwargs)
     except AttributeError as e:
         log.debug('KFAC configuration not implemented')
         kfac_configuration = None
