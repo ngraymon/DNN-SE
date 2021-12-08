@@ -395,7 +395,6 @@ def generate_electron_position_vector(molecule, electron_spec):
     log.debug(f"\nwalker tensor:\n{tab}{walker_string}")
 
     # glue the two lists together
-    # print(proposed_electron_spec)
     electron_positions = np.array(both_spins_list).reshape((sum(electron_spec), 3))
 
     return electron_positions

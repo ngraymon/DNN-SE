@@ -112,8 +112,6 @@ def kinetic_from_log(f, x, network, using_hessian=False, fake_x_2=False):
     # an attempt at using hessian
     elif using_hessian:
 
-        # print(x)
-        # print(torch.sum(x**2))
         if fake_x_2:
             hess, = hessian(
                 lambda x: torch.sum(x**2),

@@ -77,7 +77,6 @@ class Train():
 
             # this is the "real" loss of the system, i.e the mean of the loss for that batch size
             loss = torch.mean(local_energy)
-            # print(f"\t\t\t\t\t\t{copy_of_phi = }")
 
             # default for now
             if self.clip_el is None:

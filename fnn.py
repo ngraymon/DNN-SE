@@ -51,7 +51,6 @@ class FermiNet(torch.nn.Module):
         # as layers that are not connected have a weight of zero
         self.layer_dimensions[-1][-1] = 0
 
-        print(f"{self.layer_dimensions = }")
         # import pdb; pdb.set_trace()
 
         self._initialize_network_layers(spin_config, self.layer_dimensions)
@@ -275,7 +274,6 @@ class FermiNet(torch.nn.Module):
         # has an output shape of
         # (batch_size, num_determinants, n_electrons, n_electrons)
         # (7, 16, 10, 10)
-        # print(biases.device, last_layers_single_stream.device, weights.device)
         weighted_network_output = biases[None, :, :, None] + torch.mul(
             # has dimension of (batch_size, 1, 1, 10, 32)
             last_layers_single_stream[:, None, None, :, :],
@@ -285,7 +283,6 @@ class FermiNet(torch.nn.Module):
         log.debug(f"{weighted_network_output.shape = }")
 
         # broadcasted operations; the "sum over m" term in equation 6 in the paper
-        # print(sigma_weights.device, self.eN_vectors.device)
         decaying_potentials = torch.mul(
             # has dimension of (1, 16, 10, 1, 5)
             pi_weights[None, :, :, None, :],
@@ -358,9 +355,6 @@ class FermiNet(torch.nn.Module):
         for i in range(self.batch_size):
             # no_max_mask = torch.arange(num_replicas)
             # det_no_max = det[i, det[i] != max_val]
-            # print(max_val)
-            # print(det_no_max.shape)
-            # print(self.omega_weights.device, det.device, abs_det.device)
             abs_max_det = max(abs_det[i])
             log_det[i] = torch.log(abs_max_det) + torch.log(torch.abs(torch.sum(
                 self.omega_weights
